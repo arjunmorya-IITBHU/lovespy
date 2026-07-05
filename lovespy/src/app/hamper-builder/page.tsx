@@ -346,8 +346,6 @@ export default function HamperBuilder() {
             </div>
           </div>
         )}
-          </div>
-        )}
 
         {/* STEP 2: CHOOSE ADD-ONS */}
         {activeStep === 2 && customHamper.box && (
@@ -813,13 +811,17 @@ export default function HamperBuilder() {
                 </div>
               </div>
 
-              <div class="pt-4 border-t border-brand-pink/15 space-y-4">
-                <div class="flex justify-between items-end">
+              <div className="pt-4 border-t border-brand-pink/15 space-y-4">
+                <div className="flex justify-between items-end">
                   <div>
-                    <span class="text-xs text-brand-gray block font-bold">Hamper Price</span>
-                    <span class="text-[10px] text-brand-gray">Excluding tax & delivery</span>
+                    <span className="text-xs text-brand-gray block font-bold">Hamper Price</span>
+                    <span className="text-[10px] text-brand-gray">Excluding tax & delivery</span>
                   </div>
-                  <span class="font-display font-extrabold text-3xl text-brand-pink">�                <div className="flex gap-3">
+                  <span className="font-display font-extrabold text-3xl text-brand-pink">
+                    ₹{calculateSubtotal()}
+                  </span>
+                </div>
+                <div className="flex gap-3">
                   <button onClick={() => setActiveStep(4)} className="flex-1 py-3.5 border border-brand-pink/10 hover:bg-brand-pinkLight rounded-xl text-xs font-bold transition-all">Edit Accents</button>
                   <button
                     onClick={() => {
@@ -834,14 +836,10 @@ export default function HamperBuilder() {
               </div>
 
             </div>
-
-          </div>
-        )}
-      </div>         </div>
           </div>
         )}
       </div>
-      </div>
+    </div>
 
       {/* STEP 3 Bottom Empty Box Fixed Drawer Overlay replaced with Viewport Floating Hamper Box */}
       {activeStep >= 2 && activeStep <= 5 && customHamper.box && (
