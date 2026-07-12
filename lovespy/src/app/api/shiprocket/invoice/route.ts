@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOrders, dbConnect } from "@/lib/db";
+import { getOrders, dbConnect } from "@/lib/dbServer";
 import OrderModel from "@/models/Order";
 import { getShiprocketInvoice, isShiprocketSimulated } from "@/lib/shiprocket";
 

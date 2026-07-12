@@ -26,7 +26,8 @@ import {
   CheckCircle,
   X,
   Ticket,
-  Gift
+  Gift,
+  Lock
 } from "lucide-react";
 
 export default function CheckoutPage() {
@@ -69,6 +70,7 @@ export default function CheckoutPage() {
   const [addrState, setAddrState] = useState("");
   const [addrPincode, setAddrPincode] = useState("");
   const [addrIsDefault, setAddrIsDefault] = useState(false);
+  const [addrCountry, setAddrCountry] = useState("India");
 
   // Payment Simulation Modal
   const [showSimulateModal, setShowSimulateModal] = useState(false);
@@ -84,15 +86,8 @@ export default function CheckoutPage() {
       const def = parsed.find((a: any) => a.isDefault);
       if (def) setSelectedAddrId(def.id);
       else if (parsed.length > 0) setSelectedAddrId(parsed[0].id);
-    } else {
-      const defaultAddresses = [
-        { id: "addr-1", label: "Home", name: "Priya Sharma", phone: "9876543210", line1: "F-12, Green Park Extension", line2: "Near Metro Gate 3", city: "New Delhi", state: "Delhi", pincode: "110016", isDefault: true },
-        { id: "addr-2", label: "Office", name: "Priya Sharma", phone: "9876543210", line1: "A-50, Sector 62", line2: "Tech Park Block B", city: "Noida", state: "Uttar Pradesh", pincode: "201301", isDefault: false }
-      ];
-      setAddresses(defaultAddresses);
-      localStorage.setItem("lovespy_addresses", JSON.stringify(defaultAddresses));
-      setSelectedAddrId("addr-1");
     }
+    // No saved addresses: start with empty list — customer fills their own
 
     if (typeof window !== "undefined" && !(window as any).Razorpay) {
       const script = document.createElement("script");
@@ -173,27 +168,7 @@ export default function CheckoutPage() {
     }
   }, [addrPincode]);
 
-  if (!user) {
-    return (
-      <div className="max-w-md mx-auto text-center py-24 px-6 bg-white border border-brand-pink/10 rounded-3xl shadow-xl space-y-6 mt-12">
-        <div className="mx-auto w-14 h-14 bg-brand-pinkLight rounded-full flex items-center justify-center border border-brand-pink/15">
-          <Lock className="w-6 h-6 text-brand-pink" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="font-display font-bold text-xl text-brand-charcoal">Mandatory Authentication Required</h2>
-          <p className="text-xs text-brand-gray leading-relaxed">
-            Secure billing and automated Shiprocket courier dispatches require a verified Lovespy account profile.
-          </p>
-        </div>
-        <button
-          onClick={openLoginModal}
-          className="w-full py-4 bg-gradient-to-r from-brand-pink to-brand-lavender text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all border-0 cursor-pointer"
-        >
-          Sign In with OTP / Register Now
-        </button>
-      </div>
-    );
-  }
+
 
   // Cost calculation
   const subtotal = calculateSubtotal();
@@ -229,13 +204,14 @@ export default function CheckoutPage() {
   const openNewAddress = () => {
     setEditingAddress(null);
     setAddrLabel("Home");
-    setAddrName(user.name || "");
-    setAddrPhone(user.phone || "");
+    setAddrName(user?.name || "");
+    setAddrPhone(user?.phone || "");
     setAddrLine1("");
     setAddrLine2("");
     setAddrCity("");
     setAddrState("");
     setAddrPincode("");
+    setAddrCountry("India");
     setAddrIsDefault(addresses.length === 0);
     setShowAddressModal(true);
   };
@@ -250,6 +226,7 @@ export default function CheckoutPage() {
     setAddrCity(addr.city);
     setAddrState(addr.state);
     setAddrPincode(addr.pincode);
+    setAddrCountry(addr.country || "India");
     setAddrIsDefault(!!addr.isDefault);
     setShowAddressModal(true);
   };
@@ -292,6 +269,7 @@ export default function CheckoutPage() {
       city: addrCity,
       state: addrState,
       pincode: addrPincode,
+      country: addrCountry,
       isDefault: addrIsDefault
     };
 
@@ -348,7 +326,7 @@ export default function CheckoutPage() {
           cart,
           appliedCoupon,
           useRewardPoints,
-          userPoints: user.points,
+          userPoints: user?.points || 0,
           deliveryType,
         }),
       });
@@ -385,7 +363,7 @@ export default function CheckoutPage() {
             if (verifyData.success) {
               // 4. Create standard orders
               const newOrder = createOrder({
-                user_id: user.id || "user-1",
+                user_id: user?.id || "user-1",
                 address_id: selectedAddrId,
                 delivery_name: activeAddress.name,
                 delivery_phone: activeAddress.phone,
@@ -409,6 +387,39 @@ export default function CheckoutPage() {
                 razorpaySignature: response.razorpay_signature,
               });
 
+              // Sync order stats to Customer Directory
+              if (user && user.id !== "usr-guest") {
+                try {
+                  const { getCustomers, setCustomers } = require("@/lib/db");
+                  const customers = getCustomers();
+                  const existingIdx = customers.findIndex((c: any) => c.id === user.id || (user.phone && c.phone === user.phone) || (user.email && c.email === user.email));
+                  
+                  const todayStr = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+                  const nowStr = todayStr + " " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+
+                  if (existingIdx > -1) {
+                    customers[existingIdx].totalOrders = (customers[existingIdx].totalOrders || 0) + 1;
+                    customers[existingIdx].totalAmountSpent = (customers[existingIdx].totalAmountSpent || 0) + finalTotal;
+                    customers[existingIdx].lastLogin = nowStr;
+                  } else {
+                    customers.push({
+                      id: user.id || `usr-${Date.now()}`,
+                      name: user.name || "",
+                      phone: user.phone || "",
+                      email: user.email || "",
+                      registeredDate: todayStr,
+                      lastLogin: nowStr,
+                      totalOrders: 1,
+                      totalAmountSpent: finalTotal,
+                      status: "Active"
+                    });
+                  }
+                  setCustomers(customers);
+                } catch (err) {
+                  console.error("Failed to sync customer order stats:", err);
+                }
+              }
+
               clearCart();
               router.push(`/checkout/success?id=${newOrder.id}`);
             } else {
@@ -422,7 +433,7 @@ export default function CheckoutPage() {
         prefill: {
           name: activeAddress.name,
           contact: activeAddress.phone,
-          email: user.email || "",
+          email: user?.email || "",
         },
         theme: {
           color: "#C1121F",
@@ -960,7 +971,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 items-center">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="block text-[9px] font-bold uppercase text-brand-gray tracking-wider">Pincode * (6 Digits)</label>
                   <input
@@ -973,16 +984,28 @@ export default function CheckoutPage() {
                   />
                 </div>
                 
-                <div className="pt-4 flex items-center gap-2 select-none">
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-bold uppercase text-brand-gray tracking-wider">Country *</label>
                   <input
-                    type="checkbox"
-                    id="addr-default-check"
-                    checked={addrIsDefault}
-                    onChange={(e) => setAddrIsDefault(e.target.checked)}
-                    className="w-4 h-4 rounded text-brand-pink focus:ring-brand-pink"
+                    type="text"
+                    required
+                    value={addrCountry}
+                    onChange={(e) => setAddrCountry(e.target.value)}
+                    placeholder="E.g. India"
+                    className="w-full text-xs p-3 rounded-xl border focus:outline-none bg-slate-50 focus:border-brand-pink focus:bg-white"
                   />
-                  <label htmlFor="addr-default-check" className="font-bold text-[10px] text-slate-700">Set as Default</label>
                 </div>
+              </div>
+
+              <div className="pt-2 flex items-center gap-2 select-none">
+                <input
+                  type="checkbox"
+                  id="addr-default-check"
+                  checked={addrIsDefault}
+                  onChange={(e) => setAddrIsDefault(e.target.checked)}
+                  className="w-4 h-4 rounded text-brand-pink focus:ring-brand-pink"
+                />
+                <label htmlFor="addr-default-check" className="font-bold text-[10px] text-slate-700">Set as Default</label>
               </div>
 
               <div className="flex gap-4 pt-4 border-t border-slate-100">

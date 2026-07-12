@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProducts, getStoreSettings } from "@/lib/db";
+import { getProducts, getStoreSettings } from "@/lib/dbServer";
 
 const KEY_ID = process.env.RAZORPAY_KEY_ID || "";
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
@@ -35,7 +35,7 @@ function calculateServerSubtotal(cart: any[]) {
       return acc + 299 * item.qty;
     } else {
       // Standard product - verify price against database
-      const product = products.find((p) => p.id === item.id);
+      const product = products.find((p: any) => p.id === item.id);
       const verifiedPrice = product ? product.price : item.price;
       return acc + verifiedPrice * item.qty;
     }

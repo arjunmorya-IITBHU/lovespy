@@ -3,9 +3,9 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { getProducts, Product, getEffectiveStock } from "@/lib/db";
+import { getProducts, Product, getEffectiveStock, getReviews, setReviews, ProductReview } from "@/lib/db";
 import { useCart } from "@/context/CartContext";
-import { Star, Check, ShoppingCart, Heart, CheckCircle, Info, ArrowLeft } from "lucide-react";
+import { Star, Check, ShoppingCart, Heart, CheckCircle, Info, ArrowLeft, Award, MessageSquare } from "lucide-react";
 
 export default function ProductDetail() {
   const params = useParams();
@@ -15,9 +15,13 @@ export default function ProductDetail() {
 
   const product = allProducts.find((p) => p.slug === params.slug);
   const [mainImg, setMainImg] = useState(product?.image || "");
+  
+  // Reviews dynamic state
+  const [reviewsList, setReviewsList] = useState<ProductReview[]>(getReviews());
   const [reviewRating, setReviewRating] = useState("5");
+  const [reviewTitle, setReviewTitle] = useState("");
   const [reviewComment, setReviewComment] = useState("");
-  const [customReviews, setCustomReviews] = useState<Array<{ name: string; rating: number; text: string }>>([]);
+  const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
 
   // Personalization States
   const [receiverName, setReceiverName] = useState("");
@@ -33,6 +37,12 @@ export default function ProductDetail() {
   const isWish = wishlist.includes(product.id);
   const effectiveStock = getEffectiveStock(product.id, allProducts);
   const isOutOfStock = effectiveStock <= 0;
+
+  // Filter approved reviews for this product
+  const matchingReviews = reviewsList.filter(r => r.productId === product.id && (r.status === "approved" || !r.status));
+  const avgRating = matchingReviews.length > 0
+    ? (matchingReviews.reduce((acc, r) => acc + r.rating, 0) / matchingReviews.length).toFixed(1)
+    : (product.rating || 4.8).toString();
 
   // Customization cost calculation
   const photoPrice = 15;
@@ -98,14 +108,26 @@ export default function ProductDetail() {
     e.preventDefault();
     if (!reviewComment.trim()) return;
 
-    const newRev = {
-      name: "Ananya Sharma",
+    const newRev: ProductReview = {
+      id: "rev-" + Date.now(),
+      productId: product.id,
+      userName: "Ananya Sharma",
+      title: reviewTitle || "Review Slogan",
       rating: Number(reviewRating),
-      text: reviewComment,
+      comment: reviewComment,
+      date: new Date().toISOString().split("T")[0],
+      status: "pending",
+      photos: reviewPhotos,
+      userImage: ""
     };
-    setCustomReviews([...customReviews, newRev]);
+
+    const updated = [newRev, ...reviewsList];
+    setReviewsList(updated);
+    setReviews(updated);
     setReviewComment("");
-    alert("Review submitted successfully!");
+    setReviewTitle("");
+    setReviewPhotos([]);
+    alert("Review submitted successfully! It is pending administrator approval.");
   };
 
   return (
@@ -134,25 +156,22 @@ export default function ProductDetail() {
               </div>
             )}
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-2 overflow-x-auto py-1">
             <button
               onClick={() => setMainImg(product.image)}
-              className="w-20 h-20 rounded-xl overflow-hidden border-2 border-brand-pink shadow-sm"
+              className="w-16 h-16 rounded-xl overflow-hidden border-2 border-brand-pink shadow-sm shrink-0"
             >
               <img src={product.image} className="w-full h-full object-cover" alt="Thumb" />
             </button>
-            <button
-              onClick={() => setMainImg("https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=500")}
-              className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 hover:border-brand-pink transition-all"
-            >
-              <img src="https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=500" className="w-full h-full object-cover" alt="Thumb" />
-            </button>
-            <button
-              onClick={() => setMainImg("https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=500")}
-              className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 hover:border-brand-pink transition-all"
-            >
-              <img src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=500" className="w-full h-full object-cover" alt="Thumb" />
-            </button>
+            {(product.gallery || []).map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setMainImg(img)}
+                className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-brand-pink transition-all shrink-0"
+              >
+                <img src={img} className="w-full h-full object-cover" alt="Thumb" />
+              </button>
+            ))}
           </div>
         </div>
 
@@ -345,68 +364,65 @@ export default function ProductDetail() {
 
       {/* Review Section */}
       <div className="space-y-6 border-t border-brand-pink/5 pt-12">
-        <h2 className="font-display font-bold text-xl">Customer Experiences</h2>
+        <h2 className="font-display font-bold text-xl text-left">Customer Experiences</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glass-card p-5 rounded-2xl border-brand-pink/5 space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+          <div className="glass-card p-5 rounded-2xl border border-brand-pink/5 bg-slate-50/50 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-brand-charcoal">Preeti Sen</span>
               <div className="flex text-brand-gold">
-                {[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />)}
+                {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-brand-gold text-brand-gold" />)}
               </div>
             </div>
-            <p className="text-xs text-brand-gray">"Beautiful arrangement. The velvet roses stayed fresh for three days and the white truffles were delicious."</p>
+            <h4 className="font-bold text-xs text-brand-charcoal">Very luxurious arrangements</h4>
+            <p className="text-xs text-slate-600 leading-relaxed">"Beautiful arrangement. The velvet roses stayed fresh for three days and the white truffles were delicious."</p>
             <span className="text-[9px] text-brand-gray block">Verified Purchase</span>
           </div>
 
-          {customReviews.map((rev, idx) => (
-            <div key={idx} className="glass-card p-5 rounded-2xl border-brand-pink/5 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-brand-charcoal">{rev.name}</span>
-                <div className="flex text-brand-gold">
-                  {[...Array(rev.rating)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-brand-gold text-brand-gold" />)}
+          {matchingReviews.map((rev) => (
+            <div key={rev.id} className="glass-card p-5 rounded-2xl border border-brand-pink/5 bg-slate-50/50 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  {rev.userImage ? (
+                    <img src={rev.userImage} className="w-8 h-8 rounded-full object-cover border" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-brand-pinkLight border border-brand-pink/20 text-brand-pink font-bold flex items-center justify-center text-xs">
+                      {rev.userName.slice(0, 1)}
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-xs font-bold text-brand-charcoal block">{rev.userName}</span>
+                    <span className="text-[9px] text-brand-gray block">{rev.date || "2026-06-20"}</span>
+                  </div>
+                </div>
+                <div className="flex text-amber-500 font-bold text-[10px]">
+                  {"★".repeat(rev.rating)}
                 </div>
               </div>
-              <p className="text-xs text-brand-gray">"{rev.text}"</p>
-              <span className="text-[9px] text-brand-gray block">Verified Purchase</span>
+              
+              <div>
+                <h4 className="font-bold text-xs text-brand-charcoal">{rev.title}</h4>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">"{rev.comment}"</p>
+                {rev.photos && rev.photos.length > 0 && (
+                  <div className="flex gap-1.5 mt-2.5">
+                    {rev.photos.map((p, idx) => (
+                      <img key={idx} src={p} className="w-12 h-12 rounded border object-cover cursor-zoom-in" onClick={() => setMainImg(p)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {rev.reply && (
+                <div className="p-3 bg-brand-pinkLight/20 border border-brand-pink/5 rounded-xl text-[10px] space-y-0.5">
+                  <div className="font-bold text-brand-pink flex items-center gap-1">
+                    <MessageSquare className="w-3.5 h-3.5 inline" /> Store Owner Response:
+                  </div>
+                  <p className="text-slate-600 italic">"{rev.reply}"</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
-
-        {/* Write Review Form */}
-        <form onSubmit={handleReviewSubmit} className="glass-card p-6 rounded-2xl border-brand-pink/10 max-w-xl space-y-4">
-          <h3 className="font-bold text-sm">Write a Customer Review</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[9px] font-bold text-brand-gray uppercase mb-1">Your Rating</label>
-              <select
-                value={reviewRating}
-                onChange={(e) => setReviewRating(e.target.value)}
-                className="text-xs py-2 px-3 rounded border border-brand-pink/20 bg-white"
-              >
-                <option value="5">5 Stars (Excellent)</option>
-                <option value="4">4 Stars (Good)</option>
-                <option value="3">3 Stars (Average)</option>
-                <option value="2">2 Stars (Poor)</option>
-                <option value="1">1 Star (Terrible)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[9px] font-bold text-brand-gray uppercase mb-1">Your Thoughts</label>
-              <textarea
-                rows={3}
-                placeholder="Explain your experience..."
-                value={reviewComment}
-                onChange={(e) => setReviewComment(e.target.value)}
-                className="w-full text-xs p-3 rounded-lg border border-brand-pink/20 bg-white/70 focus:outline-none focus:border-brand-pink"
-              ></textarea>
-            </div>
-            <button type="submit" className="px-6 py-2.5 bg-brand-lavender text-white rounded-full text-xs font-bold hover:bg-brand-lavender/90 transition-all">
-              Submit Review
-            </button>
-          </div>
-        </form>
-
       </div>
 
     </div>

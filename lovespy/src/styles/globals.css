@@ -84,3 +84,17 @@
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+
+.interactive-marquee {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.interactive-marquee::-webkit-scrollbar {
+  display: none;
+}

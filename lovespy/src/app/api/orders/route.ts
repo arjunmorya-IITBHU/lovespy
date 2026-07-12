@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getOrders, createOrder } from "@/lib/db";
+import { getOrders, createOrder } from "@/lib/dbServer";
+import { authenticateAdmin } from "@/lib/authServer";
 import jwt from "jsonwebtoken";
 
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "fallback-secret-key-for-jwt-tokens-development";
 
-// Helper to authenticate request
+// Helper to authenticate customer requests
 function authenticate(req: Request) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -17,8 +18,9 @@ function authenticate(req: Request) {
 }
 
 export async function GET(request: Request) {
-  const userPayload = authenticate(request);
-  if (!userPayload) {
+  // Validate request is from authorized administrator
+  const adminPayload = await authenticateAdmin(request);
+  if (!adminPayload) {
     return NextResponse.json({ success: false, error: "Unauthorized access." }, { status: 401 });
   }
 
@@ -57,3 +59,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

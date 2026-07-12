@@ -532,7 +532,7 @@ export default function CustomSurprisePage() {
               <div className="space-y-2">
                 <p className="text-[9px] font-extrabold uppercase text-brand-gray tracking-wider">Sample Screenshots</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {showcaseMediaList.filter(m => m.type === 'image').map((img) => (
+                  {showcaseMediaList.filter((m: ShowcaseMedia) => m.type === 'image').map((img: ShowcaseMedia) => (
                     <div
                       key={img.id}
                       onClick={() => setSelectedShowcaseMedia(img)}
@@ -551,7 +551,7 @@ export default function CustomSurprisePage() {
               <div className="space-y-2">
                 <p className="text-[9px] font-extrabold uppercase text-brand-gray tracking-wider">Sample Video Previews</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {showcaseMediaList.filter(m => m.type === 'video').map((vid) => (
+                  {showcaseMediaList.filter((m: ShowcaseMedia) => m.type === 'video').map((vid: ShowcaseMedia) => (
                     <div
                       key={vid.id}
                       onClick={() => setSelectedShowcaseMedia(vid)}

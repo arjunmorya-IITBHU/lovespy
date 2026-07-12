@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getOrders } from "@/lib/db";
 import { Check, Package, Truck, Navigation, Gift, ChevronLeft, Download, Search, Info } from "lucide-react";
 
-export default function TrackingPage() {
+function TrackingPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const orders = getOrders();
@@ -258,5 +258,13 @@ export default function TrackingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 text-xs text-brand-gray animate-pulse">Loading Tracking details...</div>}>
+      <TrackingPageContent />
+    </Suspense>
   );
 }

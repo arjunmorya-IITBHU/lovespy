@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { getHamperBoxes, getProducts, getAddons, getEffectiveStock } from "@/lib/db";
+import { getHamperBoxes, getProducts, getAddons, getEffectiveStock, getThemes, WishTheme } from "@/lib/db";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -51,7 +51,14 @@ export default function HamperBuilder() {
   const [selectedCat, setSelectedCat] = useState("all");
   const [couponCode, setCouponCode] = useState("");
   const [couponMsg, setCouponMsg] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState("romantic");
+  const [selectedThemeId, setSelectedThemeId] = useState<string>("romantic");
+  const [customThemeBg, setCustomThemeBg] = useState<string | null>(null);
+  const [customThemeAudio, setCustomThemeAudio] = useState<string | null>(null);
+  const [useCustomTheme, setUseCustomTheme] = useState(false);
+
+  const themes = getThemes();
+  const photoInputRef = React.useRef<HTMLInputElement>(null);
+  const audioInputRef = React.useRef<HTMLInputElement>(null);
 
   // Animations State
   const [fallingItems, setFallingItems] = useState<
@@ -120,9 +127,12 @@ export default function HamperBuilder() {
     setActiveStep(2); // Automatically advance to Add-ons selection
   };
 
-  const handlePhotoUploadMock = () => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
     const currentPhotos = customHamper.personalization.photos || [];
-    const newPhotos = [...currentPhotos, `photo_${currentPhotos.length + 1}.jpg`];
+    const newFileNames = Array.from(files).map(f => f.name);
+    const newPhotos = [...currentPhotos, ...newFileNames];
     updateHamperPersonalization("photos", newPhotos);
     updateHamperPersonalization("photoName", `${newPhotos.length} Photo(s)`);
   };
@@ -134,8 +144,12 @@ export default function HamperBuilder() {
     updateHamperPersonalization("photoName", newPhotos.length > 0 ? `${newPhotos.length} Photo(s)` : "");
   };
 
-  const handleVoiceRecordMock = () => {
-    updateHamperPersonalization("voiceQrAttached", true);
+  const handleVoiceRecord = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      updateHamperPersonalization("voiceQrAttached", true);
+      updateHamperPersonalization("voiceFileName", file.name);
+    }
   };
 
   const handleAddProductClick = (e: React.MouseEvent<HTMLButtonElement>, product: any) => {
@@ -189,7 +203,7 @@ export default function HamperBuilder() {
       box: customHamper.box,
       items: customHamper.items,
       personalization: customHamper.personalization,
-      theme: selectedTheme,
+      theme: selectedThemeId,
       discount: calculateDiscount(),
       total: calculateGrandTotal()
     });
@@ -445,7 +459,7 @@ export default function HamperBuilder() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {filteredProducts.map((p) => {
                   const inBox = customHamper.items.find((i) => i.id === p.id);
                   const qtyInBox = inBox ? inBox.qty : 0;
@@ -632,11 +646,20 @@ export default function HamperBuilder() {
                   />
                 </div>
 
+                {/* Personalized Photo - Real File Picker */}
                 <div className="space-y-1.5">
-                  <label className="block className block text-[10px] font-bold uppercase text-brand-gray tracking-wider">Personalized Photo (+₹15 each)</label>
+                  <label className="block text-[10px] font-bold uppercase text-brand-gray tracking-wider">Personalized Photo (+₹15 each)</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                      <button type="button" onClick={handlePhotoUploadMock} className="px-4 py-2 border border-brand-pink/20 bg-white hover:bg-brand-pinkLight text-brand-pink rounded-lg text-xs font-bold transition-all">
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                      />
+                      <button type="button" onClick={() => photoInputRef.current?.click()} className="px-4 py-2 border border-brand-pink/20 bg-white hover:bg-brand-pinkLight text-brand-pink rounded-lg text-xs font-bold transition-all">
                         <ImageIcon className="w-3.5 h-3.5 inline mr-1" /> Upload Photo
                       </button>
                       <span className="text-[10px] text-brand-gray font-semibold">{(customHamper.personalization.photos && customHamper.personalization.photos.length > 0) ? `${customHamper.personalization.photos.length} photo(s) uploaded` : "No photos uploaded"}</span>
@@ -657,41 +680,91 @@ export default function HamperBuilder() {
                 <div className="space-y-2">
                   <label className="block text-[10px] font-bold uppercase text-brand-gray tracking-wider">Voice Message QR (+₹25)</label>
                   <div className="flex items-center gap-3">
-                    <button type="button" onClick={handleVoiceRecordMock} className="px-4 py-2 border border-brand-lavender/20 bg-white hover:bg-brand-lavenderLight text-brand-lavender rounded-lg text-xs font-bold transition-all">
-                      <Mic className="w-3.5 h-3.5 inline mr-1" /> Record Audio
+                    <input
+                      ref={audioInputRef}
+                      type="file"
+                      accept="audio/*,video/*"
+                      className="hidden"
+                      onChange={handleVoiceRecord}
+                    />
+                    <button type="button" onClick={() => audioInputRef.current?.click()} className="px-4 py-2 border border-brand-lavender/20 bg-white hover:bg-brand-lavenderLight text-brand-lavender rounded-lg text-xs font-bold transition-all">
+                      <Mic className="w-3.5 h-3.5 inline mr-1" /> Upload Audio
                     </button>
-                    <span className="text-[10px] text-brand-gray font-semibold">{customHamper.personalization.voiceQrAttached ? "✅ Audio tag attached (+₹25)" : "No voice recording"}</span>
+                    <span className="text-[10px] text-brand-gray font-semibold">{customHamper.personalization.voiceQrAttached ? `✅ Audio attached (+₹25)` : "No audio attached"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Animated Wishes Surprise Page Theme Selection */}
-              <div className="space-y-6 bg-brand-pinkLight/10 p-6 rounded-2xl border border-brand-pink/5 flex flex-col justify-between">
+              {/* Theme Selection — Admin Managed */}
+              <div className="space-y-5 bg-brand-pinkLight/10 p-6 rounded-2xl border border-brand-pink/5 flex flex-col justify-between">
                 <div className="space-y-4">
-                  <h3 className="font-bold text-xs uppercase tracking-wider text-brand-charcoal">Surprise Page Animated Wishes Theme</h3>
-                  <p className="text-[9px] text-brand-gray">Select the visual template for your custom surprise page attached to this hamper.</p>
+                  <h3 className="font-bold text-xs uppercase tracking-wider text-brand-charcoal">Surprise Page Theme</h3>
+                  <p className="text-[9px] text-brand-gray">Select the visual template for your custom surprise page. Your admin curates these themes.</p>
 
                   <div className="grid grid-cols-2 gap-3 pt-2">
-                    {[
-                      { id: "romantic", name: "Romantic Rose", desc: "Velvet roses, floating hearts", style: "border-pink-300 text-pink-700 bg-pink-50" },
-                      { id: "cyberpunk", name: "Cyber Neon", desc: "Glitch text, techno beats", style: "border-purple-300 text-purple-700 bg-purple-50" },
-                      { id: "retro", name: "Retro Polaroid", desc: "Vintage journal, tape cassette", style: "border-amber-300 text-amber-700 bg-amber-50" },
-                      { id: "disco", name: "Party Disco", desc: "Sparkle lights, confetti drop", style: "border-indigo-300 text-indigo-700 bg-indigo-50" }
-                    ].map((theme) => {
-                      const isSelected = selectedTheme === theme.id;
+                    {themes.map((theme: WishTheme) => {
+                      const isSelected = !useCustomTheme && selectedThemeId === theme.id;
                       return (
                         <div
                           key={theme.id}
-                          onClick={() => setSelectedTheme(theme.id)}
+                          onClick={() => { setSelectedThemeId(theme.id); setUseCustomTheme(false); }}
                           className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                            isSelected ? "border-brand-pink bg-white shadow-sm scale-102" : "border-slate-200 hover:border-slate-300 bg-white/50"
+                            isSelected ? "border-brand-pink bg-white shadow-sm" : "border-slate-200 hover:border-slate-300 bg-white/50"
                           }`}
+                          style={{ borderLeftColor: isSelected ? (theme.previewColor || '#f472b6') : undefined, borderLeftWidth: isSelected ? '4px' : undefined }}
                         >
-                          <h4 className="font-bold text-[10px]">{theme.name}</h4>
-                          <p className="text-[8px] text-brand-gray mt-0.5">{theme.desc}</p>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-lg">{theme.decorations || '🎨'}</span>
+                            <h4 className="font-bold text-[10px]">{theme.name}</h4>
+                          </div>
+                          <p className="text-[8px] text-brand-gray">{theme.description}</p>
+                          <div className="mt-2 h-6 rounded-md" style={{ background: theme.bgImage ? `url(${theme.bgImage}) center/cover` : theme.bgColor }}></div>
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Custom Theme Upload */}
+                  <div
+                    onClick={() => setUseCustomTheme(true)}
+                    className={`mt-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      useCustomTheme ? "border-brand-pink bg-white shadow-sm" : "border-dashed border-slate-300 hover:border-slate-400 bg-white/30"
+                    }`}
+                  >
+                    <h4 className="font-bold text-[10px] mb-1">🎭 Upload Custom Theme</h4>
+                    <p className="text-[8px] text-brand-gray mb-3">Upload your own background image &amp; audio instead of a preset theme.</p>
+                    <div className="flex flex-col gap-2">
+                      <div>
+                        <label className="text-[9px] font-bold text-brand-gray uppercase tracking-wider mb-1 block">Background Image</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="w-full text-[10px] text-brand-gray file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-brand-pinkLight file:text-brand-pink hover:file:bg-brand-pink/10 file:cursor-pointer"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) { setCustomThemeBg(URL.createObjectURL(f)); setUseCustomTheme(true); }
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-brand-gray uppercase tracking-wider mb-1 block">Audio / Video (optional)</label>
+                        <input
+                          type="file"
+                          accept="audio/*,video/*"
+                          className="w-full text-[10px] text-brand-gray file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-brand-lavenderLight file:text-brand-lavender hover:file:bg-brand-lavender/10 file:cursor-pointer"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) { setCustomThemeAudio(f.name); setUseCustomTheme(true); }
+                          }}
+                        />
+                      </div>
+                      {customThemeBg && (
+                        <div className="mt-1 h-14 rounded-lg border border-slate-200 overflow-hidden">
+                          <img src={customThemeBg} alt="Custom bg preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      {customThemeAudio && <p className="text-[9px] text-brand-lavender font-bold">🎵 {customThemeAudio}</p>}
+                    </div>
                   </div>
                 </div>
 
@@ -757,7 +830,7 @@ export default function HamperBuilder() {
               </div>
 
               <div className="flex flex-wrap gap-2 justify-center mt-6 relative z-10 text-[10px] font-bold">
-                <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200 capitalize">🎨 Theme: {selectedTheme}</span>
+                <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200 capitalize">🎨 Theme: {selectedThemeId}</span>
                 {getAddons().filter(ad => customHamper.personalization.decorations[ad.id]).map((ad) => (
                   <span key={ad.id} className="bg-pink-100 text-brand-pink px-3 py-1 rounded-full border border-brand-pink/20">✨ {ad.name}</span>
                 ))}
@@ -767,25 +840,25 @@ export default function HamperBuilder() {
             </div>
 
             {/* Price Details Summary Right */}
-            <div class="glass-card p-8 rounded-3xl border-brand-pink/15 space-y-6 flex flex-col justify-between bg-white">
-              <div class="space-y-4">
-                <h2 class="font-display font-bold text-xl text-brand-charcoal">Review Hamper Configuration</h2>
+            <div className="glass-card p-8 rounded-3xl border-brand-pink/15 space-y-6 flex flex-col justify-between bg-white">
+              <div className="space-y-4">
+                <h2 className="font-display font-bold text-xl text-brand-charcoal">Review Hamper Configuration</h2>
                 
-                <div class="space-y-2.5 text-xs">
-                  <div class="flex items-center gap-2 border-b border-brand-pink/5 pb-2">
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center gap-2 border-b border-brand-pink/5 pb-2">
                     <Package className="w-4 h-4 text-brand-pink" />
                     <div>
-                      <p class="font-bold">{customHamper.box.name}</p>
-                      <p class="text-[9px] text-brand-gray">Container base cost: ₹{customHamper.box.basePrice}</p>
+                      <p className="font-bold">{customHamper.box.name}</p>
+                      <p className="text-[9px] text-brand-gray">Container base cost: ₹{customHamper.box.basePrice}</p>
                     </div>
                   </div>
 
-                  <div class="border-b border-brand-pink/5 pb-2">
-                    <p class="text-[9px] font-bold uppercase tracking-wider text-brand-gray mb-1">Packed Goods</p>
-                    <div class="grid grid-cols-1 gap-1 text-[11px] font-medium text-brand-charcoal">
+                  <div className="border-b border-brand-pink/5 pb-2">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-brand-gray mb-1">Packed Goods</p>
+                    <div className="grid grid-cols-1 gap-1 text-[11px] font-medium text-brand-charcoal">
                       {customHamper.items.map((it) => (
-                        <div key={it.id} class="flex justify-between">
-                          <span>{it.name} <strong class="text-brand-pink">x{it.qty}</strong></span>
+                        <div key={it.id} className="flex justify-between">
+                          <span>{it.name} <strong className="text-brand-pink">x{it.qty}</strong></span>
                           <span>₹{it.price * it.qty}</span>
                         </div>
                       ))}
@@ -793,15 +866,15 @@ export default function HamperBuilder() {
                   </div>
 
                   <div>
-                    <p class="text-[9px] font-bold uppercase tracking-wider text-brand-gray mb-1">Personalizations</p>
-                    <div class="grid grid-cols-1 gap-1.5 text-[11px] font-medium text-brand-charcoal">
-                      {customHamper.personalization.letter && <div class="flex justify-between"><span>Handwritten letter</span><span class="text-brand-pink">Attached</span></div>}
-                      {customHamper.personalization.card && <div class="flex justify-between"><span>Greeting Card Text</span><span class="text-brand-pink truncate max-w-[120px]">{customHamper.personalization.card}</span></div>}
-                      {customHamper.personalization.nameTag && <div class="flex justify-between"><span>Engraved Name Tag</span><span class="text-brand-pink">{customHamper.personalization.nameTag}</span></div>}
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-brand-gray mb-1">Personalizations</p>
+                    <div className="grid grid-cols-1 gap-1.5 text-[11px] font-medium text-brand-charcoal">
+                      {customHamper.personalization.letter && <div className="flex justify-between"><span>Handwritten letter</span><span className="text-brand-pink">Attached</span></div>}
+                      {customHamper.personalization.card && <div className="flex justify-between"><span>Greeting Card Text</span><span className="text-brand-pink truncate max-w-[120px]">{customHamper.personalization.card}</span></div>}
+                      {customHamper.personalization.nameTag && <div className="flex justify-between"><span>Engraved Name Tag</span><span className="text-brand-pink">{customHamper.personalization.nameTag}</span></div>}
                       {((customHamper.personalization.photos && customHamper.personalization.photos.length > 0) || customHamper.personalization.photoName) && <div className="flex justify-between"><span>Photo Upload (+₹15)</span><span>₹{(customHamper.personalization.photos || [customHamper.personalization.photoName]).length * 15}</span></div>}
                       {customHamper.personalization.voiceQrAttached && <div className="flex justify-between"><span>Voice Message QR (+₹25)</span><span>₹25</span></div>}
                       {getAddons().filter(ad => customHamper.personalization.decorations[ad.id]).map((ad) => (
-                        <div key={ad.id} class="flex justify-between">
+                        <div key={ad.id} className="flex justify-between">
                           <span>{ad.name}</span>
                           <span>₹{ad.price}</span>
                         </div>

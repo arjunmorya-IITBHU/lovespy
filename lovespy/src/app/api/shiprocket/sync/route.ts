@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOrders, updateOrderDetails, dbConnect } from "@/lib/db";
+import { getOrders, updateOrderDetails, dbConnect } from "@/lib/dbServer";
 import OrderModel from "@/models/Order";
 import { trackShiprocketAWB, isShiprocketSimulated } from "@/lib/shiprocket";
 
@@ -8,7 +8,7 @@ export async function GET() {
     const simulated = await isShiprocketSimulated();
 
     // 1. Gather all active orders from memory
-    let activeOrders = getOrders().filter(o => 
+    let activeOrders = getOrders().filter((o: any) => 
       (o.shiprocketOrderId || o.shiprocketAwb) && 
       o.status !== "delivered"
     );
@@ -41,15 +41,15 @@ export async function GET() {
 
       if (simulated) {
         // Auto-advance simulated orders step-by-step
-        const stages = ["Processing", "Packed", "Shipped", "In Transit", "Out For Delivery", "Delivered"];
-        const mainStatusMap: Record<string, string> = {
+        const stages = ["Processing", "Packed", "Shipped", "In Transit", "Out For Delivery", "Delivered"] as const;
+        const mainStatusMap = {
           "Processing": "confirmed",
           "Packed": "packed",
           "Shipped": "shipped",
           "In Transit": "shipped",
           "Out For Delivery": "out_for_delivery",
           "Delivered": "delivered"
-        };
+        } as const;
 
         const currentIdx = stages.indexOf(nextShiprocketStatus);
         if (currentIdx !== -1 && currentIdx < stages.length - 1) {

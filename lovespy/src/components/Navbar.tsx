@@ -11,7 +11,7 @@ import Logo from "@/components/Logo";
 export default function Navbar() {
   const pathname = usePathname();
   const { cart, wishlist } = useCart();
-  const { user, logout, loginWithGoogle } = useAuth();
+  const { user, logout, openLoginModal } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -33,7 +33,7 @@ export default function Navbar() {
         {/* Desktop Nav Links */}
         <nav className="hidden lg:flex items-center gap-4 text-xs font-bold uppercase tracking-wider">
           <Link href="/" className={`transition-colors ${pathname === "/" ? "text-brand-pink" : "text-brand-charcoal hover:text-brand-pink"}`}>Home</Link>
-          <Link href="/shop?type=gifts" className={`transition-colors ${pathname === "/shop" && typeof window !== 'undefined' && window.location.search.includes("type=gifts") ? "text-brand-pink" : "text-brand-charcoal hover:text-brand-pink"}`}>Gifts</Link>
+          <Link href="/shop?type=gifts" className={`transition-colors ${pathname === "/shop" ? "text-brand-pink" : "text-brand-charcoal hover:text-brand-pink"}`}>Gifts</Link>
           <Link href="/hamper-builder" className={`relative py-1.5 px-3.5 rounded-full font-bold transition-all duration-300 flex items-center gap-1.5 ${pathname === "/hamper-builder" ? "bg-gradient-to-r from-brand-pink to-brand-lavender text-white shadow-lg shadow-brand-pink/20" : "bg-gradient-to-r from-brand-pink/5 via-brand-lavender/10 to-brand-pink/5 text-brand-charcoal hover:scale-105 border border-brand-pink/20 hover:border-brand-pink/40 shadow-sm"}`}>
             <span className="relative z-10">Build Your Own Hamper</span>
             <span className="bg-brand-pink text-white text-[8px] font-black tracking-tighter uppercase px-1.5 py-0.5 rounded-full animate-pulse-soft">
@@ -76,13 +76,13 @@ export default function Navbar() {
               className="flex items-center gap-1.5 p-1 rounded-full hover:bg-brand-pinkLight border border-brand-pink/10 transition-all"
             >
               <img
-                src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${user ? user.name : "Guest"}`}
+                src={`https://api.dicebear.com/7.x/adventurer/svg?seed=${user && user.id !== "usr-guest" ? user.name : "Guest"}`}
                 alt="Avatar"
                 className="w-7 h-7 rounded-full bg-white object-cover"
               />
               <ChevronDown className="w-3.5 h-3.5 text-brand-gray hidden sm:inline" />
             </button>
-
+ 
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white border border-brand-pink/10 rounded-2xl shadow-xl py-2 z-50">
                 <div className="px-4 py-2 border-b border-brand-pink/5 mb-1">
@@ -91,12 +91,6 @@ export default function Navbar() {
                 <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-charcoal hover:bg-brand-pinkLight hover:text-brand-pink transition-colors"><UserIcon className="w-4 h-4" /> My Profile</Link>
                 <Link href="/dashboard?tab=orders" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-charcoal hover:bg-brand-pinkLight hover:text-brand-pink transition-colors"><ShoppingBag className="w-4 h-4" /> My Orders</Link>
                 <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-charcoal hover:bg-brand-lavenderLight hover:text-brand-lavender transition-colors border-t border-brand-pink/5"><ShieldCheck className="w-4 h-4" /> Admin Panel</Link>
-                <hr className="border-brand-pink/5 my-1" />
-                {user ? (
-                  <button onClick={() => { logout(); setDropdownOpen(false); }} className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors"><LogOut className="w-4 h-4" /> Logout</button>
-                ) : (
-                  <button onClick={() => { loginWithGoogle(); setDropdownOpen(false); }} className="w-full text-left flex items-center gap-2 px-4 py-2 text-xs font-semibold text-green-500 hover:bg-green-50 transition-colors"><LogIn className="w-4 h-4" /> Login (Demo)</button>
-                )}
               </div>
             )}
           </div>

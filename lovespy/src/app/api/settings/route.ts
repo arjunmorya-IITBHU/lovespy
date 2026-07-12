@@ -1,20 +1,6 @@
 import { NextResponse } from "next/server";
-import { getStoreSettings, setStoreSettings } from "@/lib/db";
-import jwt from "jsonwebtoken";
-
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "fallback-secret-key-for-jwt-tokens-development";
-
-// Helper to authenticate request
-function authenticate(req: Request) {
-  try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-    const token = authHeader.split(" ")[1];
-    return jwt.verify(token, JWT_ACCESS_SECRET);
-  } catch (e) {
-    return null;
-  }
-}
+import { getStoreSettings, setStoreSettings } from "@/lib/dbServer";
+import { authenticateAdmin } from "@/lib/authServer";
 
 export async function GET() {
   try {
@@ -26,9 +12,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  // Try to authenticate. If failed, return 401
-  const userPayload = authenticate(request);
-  if (!userPayload) {
+  // Validate request is from authorized administrator
+  const adminPayload = await authenticateAdmin(request);
+  if (!adminPayload) {
     return NextResponse.json({ success: false, error: "Unauthorized access." }, { status: 401 });
   }
 
@@ -40,3 +26,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

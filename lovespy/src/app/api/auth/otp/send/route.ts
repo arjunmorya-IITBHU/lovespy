@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/db";
+import { dbConnect } from "@/lib/dbServer";
 import OtpModel from "@/models/Otp";
 import SettingsModel from "@/models/Settings";
 import UserModel from "@/models/User";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 export async function POST(request: Request) {
   try {
@@ -126,8 +127,6 @@ export async function POST(request: Request) {
 
       if (smtpHost && smtpUser && smtpPass) {
         try {
-          // Dynamic load nodemailer to avoid compile issues if not installed
-          const nodemailer = require("nodemailer");
           const transporter = nodemailer.createTransport({
             host: smtpHost,
             port: smtpPort || 587,

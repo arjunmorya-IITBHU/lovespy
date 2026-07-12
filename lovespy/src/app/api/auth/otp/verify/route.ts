@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbConnect } from "@/lib/db";
+import { dbConnect } from "@/lib/dbServer";
 import OtpModel from "@/models/Otp";
 import UserModel from "@/models/User";
 import jwt from "jsonwebtoken";
@@ -76,29 +76,10 @@ export async function POST(request: Request) {
 
     // If user does not exist, create user record (Register)
     if (!user) {
-      const userPhone = phone || registerPhone?.trim();
-      if (!userPhone || !/^\d{10}$/.test(userPhone)) {
-        // If they logged in via email but are new, we need a valid phone number
-        return NextResponse.json({
-          success: false,
-          needsRegistrationDetails: true,
-          error: "Welcome! To complete your new account registration, we need your name and phone number."
-        }, { status: 200 }); // Status 200 to let the client handle input state switch
-      }
-
-      // Check if phone number is already registered under another email
-      const phoneCheck = await UserModel.findOne({ phone: userPhone });
-      if (phoneCheck) {
-        return NextResponse.json(
-          { success: false, error: "This mobile number is already registered under another account." },
-          { status: 400 }
-        );
-      }
-
-      // Register new user
+      // Register new user with blank profile fields
       user = await UserModel.create({
-        name: name?.trim() || "Gifter User",
-        phone: userPhone,
+        name: "",
+        phone: phone ? phone.trim() : undefined,
         email: email ? email.trim().toLowerCase() : undefined,
         authProvider: email ? "email" : "otp",
         isVerified: true,

@@ -5,8 +5,10 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AvatarWidget from "@/components/AvatarWidget";
 import LoginModal from "@/components/LoginModal";
+import ScrollToTop from "@/components/ScrollToTop";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { Suspense } from "react";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,6 +47,9 @@ export default function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} ${cormorant.variable} font-sans bg-gradient-to-tr from-[#FCF8F8] via-[#FAF6F2] to-[#FFFBF7] min-h-screen text-brand-charcoal overflow-x-hidden antialiased`}>
         <AuthProvider>
           <CartProvider>
+            <Suspense fallback={null}>
+              <ScrollToTop />
+            </Suspense>
             <div className="bg-brand-charcoal text-white py-2 text-center text-xs font-semibold overflow-hidden">
               <span>💖 10% OFF on Orders Above ₹1,999! Code: LOVESPY10 💖</span>
             </div>

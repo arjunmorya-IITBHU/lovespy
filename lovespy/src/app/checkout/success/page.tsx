@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getOrders } from "@/lib/db";
-import { CheckCircle2, PackageCheck, Calendar, ArrowRight, Home } from "lucide-react";
+import { CheckCircle2, PackageCheck, Calendar, Home } from "lucide-react";
 import confetti from "canvas-confetti";
 
-export default function OrderSuccessPage() {
+function SuccessPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("id");
@@ -125,5 +125,13 @@ export default function OrderSuccessPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={<div className="max-w-xl mx-auto py-16 px-4 text-center text-xs text-brand-gray">Loading confirmation details...</div>}>
+      <SuccessPageContent />
+    </Suspense>
   );
 }

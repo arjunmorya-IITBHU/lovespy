@@ -1,46 +1,4 @@
-import mongoose from "mongoose";
-import UserModel from "@/models/User";
-import ProductModel from "@/models/Product";
-import OrderModel from "@/models/Order";
-import CouponModel from "@/models/Coupon";
-import SettingsModel from "@/models/Settings";
 
-const MONGODB_URI = process.env.MONGODB_URI || "";
-
-let cached = (global as any).mongoose;
-
-if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
-}
-
-export async function dbConnect() {
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    if (!MONGODB_URI) {
-      console.warn("MongoDB connection string missing. Operating in simulated seed database mode.");
-      return null;
-    }
-    const opts = {
-      bufferCommands: false,
-    };
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
-      return mongooseInstance;
-    });
-  }
-
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-
-  return cached.conn;
-}
 
 // ==========================================
 // SEED IN-MEMORY DATABASE FALLBACKS
@@ -59,6 +17,27 @@ export interface ProductType {
   stock: number;
   trendingOrder?: number;
   crossedPrice?: number;
+  originalPrice?: number;
+  discountPercentage?: number;
+  shortDescription?: string;
+  gallery?: string[];
+  weight?: string;
+  dimensions?: string;
+  includes?: string;
+  deliveryInfo?: string;
+  highlights?: string;
+  features?: string;
+  careInstructions?: string;
+  customNotes?: string;
+  availability?: "in-stock" | "out-of-stock" | "pre-order";
+  costPrice?: number;
+  lowStockAlert?: number;
+  videoUrl?: string;
+  material?: string;
+  metaTitle?: string;
+  metaDesc?: string;
+  metaKeywords?: string;
+  status?: "draft" | "published" | "out-of-stock";
 }
 
 export type Product = ProductType;
@@ -68,7 +47,7 @@ export interface Order {
   orderNumber: string;
   date: string;
   total: number;
-  status: "confirmed" | "packed" | "shipped" | "delivered";
+  status: "pending" | "confirmed" | "packed" | "shipped" | "out_for_delivery" | "delivered" | "cancelled" | "refunded";
   deliveryType: string;
   items: Array<{ name: string; price: number; qty: number }>;
   tracking: string;
@@ -98,17 +77,89 @@ export interface HamperBox {
   maxItems: number;
   size: string;
   image: string;
+  // Extended fields
+  desc?: string;
+  shortDescription?: string;
+  category?: string;
+  tags?: string[];
+  costPrice?: number;
+  originalPrice?: number;
+  discountPercentage?: number;
+  stock?: number;
+  lowStockAlert?: number;
+  weight?: string;
+  dimensions?: string;
+  includes?: string;
+  features?: string;
+  highlights?: string;
+  material?: string;
+  careInstructions?: string;
+  deliveryInfo?: string;
+  gallery?: string[];
+  videoUrl?: string;
+  status?: "draft" | "published" | "out-of-stock";
+  availability?: "in-stock" | "out-of-stock" | "pre-order";
+  metaTitle?: string;
+  metaDesc?: string;
+  metaKeywords?: string;
 }
 
-const categories: Category[] = [
-  { id: "c1", name: "Chocolates", slug: "chocolates", icon: "candy" },
-  { id: "c2", name: "Jewelry", slug: "jewelry", icon: "sparkles" },
-  { id: "c3", name: "Cosmetics", slug: "cosmetics", icon: "palette" },
-  { id: "c4", name: "Plush Toys", slug: "plush-toys", icon: "smile" },
-  { id: "c5", name: "Accessories", slug: "accessories", icon: "glasses" },
-  { id: "c6", name: "Personalized", slug: "personalized", icon: "image" },
-  { id: "c7", name: "Luxury Gifts", slug: "luxury", icon: "crown" }
-];
+// ==========================================
+// DYNAMIC CATEGORY SYSTEM
+// Categories are derived from product data + any admin-created custom categories
+// ==========================================
+
+/**
+ * Returns deduplicated, sorted list of all category strings used across all products.
+ * This is the single source of truth for categories throughout the site.
+ */
+export const getProductCategories = (): string[] => {
+  const fromProducts = Array.from(
+    new Set(productsList.map((p) => p.category).filter(Boolean))
+  );
+  // Merge in any admin-created custom categories (may not yet have products)
+  const customCats: string[] = (() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("lovespy_custom_categories") || "[]");
+    } catch {
+      return [];
+    }
+  })();
+  const merged = Array.from(new Set([...fromProducts, ...customCats]));
+  return merged.sort((a, b) => a.localeCompare(b));
+};
+
+/**
+ * Persist a new category name so it's available for future product assignments.
+ * Once a product is assigned that category it will appear automatically.
+ */
+export const addCategory = (name: string): void => {
+  if (!name.trim()) return;
+  const existing: string[] = (() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("lovespy_custom_categories") || "[]");
+    } catch {
+      return [];
+    }
+  })();
+  if (!existing.includes(name.trim())) {
+    const updated = [...existing, name.trim()];
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lovespy_custom_categories", JSON.stringify(updated));
+    }
+  }
+};
+
+/**
+ * Replace the entire stored custom categories list.
+ */
+export const setCategories = (cats: string[]): void => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("lovespy_custom_categories", JSON.stringify(cats));
+  }
+};
 
 const defaultProducts: ProductType[] = [
   {
@@ -339,6 +390,10 @@ export interface SurpriseOrderType {
   id: string;
   orderNumber: string;
   date: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+  razorpaySignature?: string;
+  paymentId?: string;
   senderName: string;
   receiverName: string;
   mobileNumber: string;
@@ -407,6 +462,60 @@ export interface OfferItem {
   displayOrder: number;
 }
 
+export interface HeroCta {
+  text: string;
+  url: string;
+  target: "_self" | "_blank";
+  style: "primary" | "secondary";
+}
+
+export interface HeroSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  desktopImage: string;
+  mobileImage: string;
+  video: string;
+  ctas: HeroCta[];
+  startDate: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endDate: string; // YYYY-MM-DD
+  endTime: string; // HH:MM
+  timezone: string;
+  campaignType: string; // Valentines Day, Fathers Day, etc.
+  priority: number;
+  showDesktop: boolean;
+  showMobile: boolean;
+  showTablet: boolean;
+  showForLoggedIn: boolean;
+  showForGuests: boolean;
+  overlayColor: string;
+  overlayOpacity: number;
+  textAlignment: "left" | "center" | "right";
+  textColor: string;
+  contentPosition: "left" | "center" | "right";
+  status: "published" | "draft" | "publish-later";
+  isEnabled: boolean;
+  duration: number; // in seconds
+  views: number;
+  clicks: number;
+  offerText?: string;
+  badgeLabel?: string;
+  backgroundType: "image" | "video" | "color";
+  backgroundColor: string;
+  rightImage?: string;
+  rightImageMobile?: string;
+}
+
+export interface HeroSliderSettings {
+  autoRotate: boolean;
+  rotationSpeed: number; // in seconds
+  infiniteLoop: boolean;
+  showArrows: boolean;
+  showDots: boolean;
+}
+
 export interface HeroSettings {
   title: string;
   subtitle: string;
@@ -414,6 +523,20 @@ export interface HeroSettings {
   video: string;
   ctaText: string;
   ctaLink: string;
+}
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  title?: string;
+  userImage?: string;
+  date?: string;
+  status: "pending" | "approved" | "rejected";
+  photos?: string[];
+  reply?: string;
 }
 
 export interface SeasonalCampaign {
@@ -439,6 +562,30 @@ export interface AddonItem {
   stock: number;
   isEnabled: boolean;
   image?: string;
+  // Extended fields
+  desc?: string;
+  shortDescription?: string;
+  category?: string;
+  tags?: string[];
+  costPrice?: number;
+  originalPrice?: number;
+  discountPercentage?: number;
+  lowStockAlert?: number;
+  weight?: string;
+  dimensions?: string;
+  includes?: string;
+  features?: string;
+  highlights?: string;
+  material?: string;
+  careInstructions?: string;
+  deliveryInfo?: string;
+  gallery?: string[];
+  videoUrl?: string;
+  status?: "draft" | "published" | "out-of-stock";
+  availability?: "in-stock" | "out-of-stock" | "pre-order";
+  metaTitle?: string;
+  metaDesc?: string;
+  metaKeywords?: string;
 }
 
 export interface CouponItem {
@@ -454,8 +601,11 @@ export interface CustomerType {
   name: string;
   phone: string;
   email: string;
-  points: number;
-  orderCount: number;
+  registeredDate: string;
+  lastLogin: string;
+  totalOrders: number;
+  totalAmountSpent: number;
+  status: "Active" | "Inactive";
 }
 
 // Seed CMS state fallbacks
@@ -505,9 +655,9 @@ const defaultCoupons: CouponItem[] = [
 ];
 
 const defaultCustomers: CustomerType[] = [
-  { id: "c-1", name: "Ananya Sharma", phone: "9876543210", email: "ananya@gmail.com", points: 150, orderCount: 2 },
-  { id: "c-2", name: "Rahul Mehra", phone: "9988776655", email: "rahul.m@outlook.com", points: 80, orderCount: 1 },
-  { id: "c-3", name: "Priya S.", phone: "9812345678", email: "priya.s@gmail.com", points: 240, orderCount: 3 }
+  { id: "c-1", name: "Ananya Sharma", phone: "9876543210", email: "ananya@gmail.com", registeredDate: "2026-05-10", lastLogin: "2026-07-08 14:30", totalOrders: 2, totalAmountSpent: 3500, status: "Active" },
+  { id: "c-2", name: "Rahul Mehra", phone: "9988776655", email: "rahul.m@outlook.com", registeredDate: "2026-06-01", lastLogin: "2026-07-08 15:45", totalOrders: 1, totalAmountSpent: 1200, status: "Active" },
+  { id: "c-3", name: "Priya S.", phone: "9812345678", email: "priya.s@gmail.com", registeredDate: "2026-06-15", lastLogin: "2026-07-07 09:20", totalOrders: 3, totalAmountSpent: 5200, status: "Active" }
 ];
 
 // LocalStorage helpers for Next.js browser execution
@@ -533,17 +683,115 @@ const saveToStorage = (key: string, data: any) => {
   }
 };
 
-let productsList = loadFromStorage("lovespy_products", defaultProducts);
-let hamperBoxesMock = loadFromStorage("lovespy_boxes", defaultHamperBoxes);
-let ordersMock = loadFromStorage("lovespy_orders", defaultOrders);
-let surpriseOrdersMock = loadFromStorage("lovespy_surprise_orders", defaultSurpriseOrders);
-let offersMock = loadFromStorage("lovespy_offers", defaultOffers);
-let heroSettingsMock = loadFromStorage("lovespy_hero", defaultHeroSettings);
-let seasonalCampaignsMock = loadFromStorage("lovespy_campaigns", defaultSeasonalCampaigns);
-let showcaseMediaMock = loadFromStorage("lovespy_showcase", defaultShowcaseMedia);
-let addonsMock = loadFromStorage("lovespy_addons", defaultAddons);
-let couponsMock = loadFromStorage("lovespy_coupons", defaultCoupons);
-let customersMock = loadFromStorage("lovespy_customers", defaultCustomers);
+let productsList: ProductType[] = loadFromStorage("lovespy_products", defaultProducts);
+let hamperBoxesMock: HamperBox[] = loadFromStorage("lovespy_boxes", defaultHamperBoxes);
+let ordersMock: Order[] = loadFromStorage("lovespy_orders", defaultOrders);
+let surpriseOrdersMock: SurpriseOrderType[] = loadFromStorage("lovespy_surprise_orders", defaultSurpriseOrders);
+let offersMock: OfferItem[] = loadFromStorage("lovespy_offers", defaultOffers);
+let heroSettingsMock: HeroSettings = loadFromStorage("lovespy_hero", defaultHeroSettings);
+
+const defaultHeroSlides: HeroSlide[] = [
+  {
+    id: "slide-1",
+    title: "Make Every Gift <br><span class='bg-gradient-to-r from-brand-pink to-brand-lavender bg-clip-text text-transparent'>Tell A Story</span>",
+    subtitle: "Build bespoke, high-quality gift baskets designed to evoke tears of joy.",
+    description: "Add handwritten letters, polaroid magnet wraps, and custom voice greeting cards.",
+    desktopImage: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=800&auto=format&fit=crop&q=80",
+    mobileImage: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=500&auto=format&fit=crop&q=80",
+    video: "",
+    ctas: [
+      { text: "Design A Custom Hamper", url: "/hamper-builder", target: "_self", style: "primary" },
+      { text: "Browse Readymade", url: "/shop?tab=hampers", target: "_self", style: "secondary" }
+    ],
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
+    timezone: "local",
+    campaignType: "None",
+    priority: 1,
+    showDesktop: true,
+    showMobile: true,
+    showTablet: true,
+    showForLoggedIn: true,
+    showForGuests: true,
+    overlayColor: "#000000",
+    overlayOpacity: 0.3,
+    textAlignment: "left",
+    textColor: "#ffffff",
+    contentPosition: "left",
+    status: "published",
+    isEnabled: true,
+    duration: 5,
+    views: 0,
+    clicks: 0,
+    offerText: "Bespoke Packaging Included",
+    badgeLabel: "Featured",
+    backgroundType: "image",
+    backgroundColor: "#1e1e1e"
+  },
+  {
+    id: "slide-2",
+    title: "Valentine's Week Celebration",
+    subtitle: "Express your love with premium red velvet hampers.",
+    description: "Custom letterpress stationery, polaroid magnets, and chocolate bouquets.",
+    desktopImage: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=800&auto=format&fit=crop&q=80",
+    mobileImage: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=500&auto=format&fit=crop&q=80",
+    video: "",
+    ctas: [
+      { text: "Shop Valentine Hampers", url: "/shop?tab=hampers", target: "_self", style: "primary" }
+    ],
+    startDate: "",
+    startTime: "",
+    endDate: "",
+    endTime: "",
+    timezone: "local",
+    campaignType: "Valentines Day",
+    priority: 2,
+    showDesktop: true,
+    showMobile: true,
+    showTablet: true,
+    showForLoggedIn: true,
+    showForGuests: true,
+    overlayColor: "#000000",
+    overlayOpacity: 0.4,
+    textAlignment: "left",
+    textColor: "#ffffff",
+    contentPosition: "left",
+    status: "published",
+    isEnabled: true,
+    duration: 5,
+    views: 0,
+    clicks: 0,
+    offerText: "Flat 10% OFF",
+    badgeLabel: "Limited Time",
+    backgroundType: "image",
+    backgroundColor: "#2c0e12"
+  }
+];
+
+const defaultSliderSettings: HeroSliderSettings = {
+  autoRotate: true,
+  rotationSpeed: 5,
+  infiniteLoop: true,
+  showArrows: true,
+  showDots: true
+};
+
+const defaultReviews: ProductReview[] = [
+  { id: "r1", productId: "p1", userName: "Ananya S.", rating: 5, comment: "Absolutely loved it! The roses were fresh and packaging was gorgeous.", title: "Wonderful anniversary gift!", date: "2026-06-15", status: "approved" },
+  { id: "r2", productId: "p1", userName: "Rahul M.", rating: 4, comment: "Delivered on time for our anniversary. Highly recommended.", title: "Fresh roses and fast shipping", date: "2026-06-20", status: "approved" },
+  { id: "r3", productId: "p2", userName: "Deepika R.", rating: 5, comment: "The midnight delivery was so exact! Best service ever.", title: "Perfect midnight surprise", date: "2026-06-22", status: "approved" }
+];
+
+let heroSlidesMock: HeroSlide[] = loadFromStorage("lovespy_hero_slides", defaultHeroSlides);
+let reviewsMock: ProductReview[] = loadFromStorage("lovespy_reviews", defaultReviews);
+let sliderSettingsMock: HeroSliderSettings = loadFromStorage("lovespy_slider_settings", defaultSliderSettings);
+let seasonalCampaignsMock: SeasonalCampaign[] = loadFromStorage("lovespy_campaigns", defaultSeasonalCampaigns);
+let showcaseMediaMock: ShowcaseMedia[] = loadFromStorage("lovespy_showcase", defaultShowcaseMedia);
+let addonsMock: AddonItem[] = loadFromStorage("lovespy_addons", defaultAddons);
+let couponsMock: CouponItem[] = loadFromStorage("lovespy_coupons", defaultCoupons);
+let customersMock: CustomerType[] = loadFromStorage("lovespy_customers", defaultCustomers);
 
 const defaultHamperComponents = {
   p1: [
@@ -570,68 +818,156 @@ export const setHamperComponents = (newHamperComponents: Record<string, Array<{ 
 };
 
 // Export helpers
-export const getCategories = () => categories;
-export const getProducts = () => productsList;
+/**
+ * Returns Category objects derived dynamically from current product data.
+ * Any new product category or admin-added category automatically appears here.
+ */
+export const getCategories = (): Category[] => {
+  const catStrings = getProductCategories();
+  return catStrings.map((name, idx) => ({
+    id: `cat-${name.toLowerCase().replace(/\s+/g, "-")}-${idx}`,
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    slug: name.toLowerCase().replace(/\s+/g, "-"),
+    icon: "tag",
+  }));
+};
+export const getProducts = (): ProductType[] => productsList;
 export const setProducts = (newProducts: ProductType[]) => {
   productsList = newProducts;
   saveToStorage("lovespy_products", newProducts);
 };
 
-export const getHamperBoxes = () => hamperBoxesMock;
+export const getHamperBoxes = (): HamperBox[] => hamperBoxesMock;
 export const setHamperBoxes = (newBoxes: HamperBox[]) => {
   hamperBoxesMock = newBoxes;
   saveToStorage("lovespy_boxes", newBoxes);
 };
 
-export const getOrders = () => ordersMock;
+export const getOrders = (): Order[] => ordersMock;
 export const setOrders = (newOrders: any[]) => {
   ordersMock = newOrders;
   saveToStorage("lovespy_orders", newOrders);
 };
 
-export const getSurpriseOrders = () => surpriseOrdersMock;
+export const getSurpriseOrders = (): SurpriseOrderType[] => surpriseOrdersMock;
 export const setSurpriseOrders = (newSurpriseOrders: SurpriseOrderType[]) => {
   surpriseOrdersMock = newSurpriseOrders;
   saveToStorage("lovespy_surprise_orders", newSurpriseOrders);
 };
 
-export const getOffers = () => offersMock;
+export const getOffers = (): OfferItem[] => offersMock;
 export const setOffers = (newOffers: OfferItem[]) => {
   offersMock = newOffers;
   saveToStorage("lovespy_offers", newOffers);
 };
 
-export const getHeroBanner = () => heroSettingsMock;
+export const getHeroBanner = (): HeroSettings => heroSettingsMock;
+export const getHeroSlides = (): HeroSlide[] => heroSlidesMock;
+export const setHeroSlides = (newSlides: HeroSlide[]) => {
+  heroSlidesMock = newSlides;
+  saveToStorage("lovespy_hero_slides", newSlides);
+};
+
+export const getHeroSliderSettings = (): HeroSliderSettings => sliderSettingsMock;
+
+export const getReviews = (): ProductReview[] => reviewsMock;
+export const setReviews = (newReviews: ProductReview[]) => {
+  reviewsMock = newReviews;
+  saveToStorage("lovespy_reviews", newReviews);
+};
+export const setHeroSliderSettings = (newSettings: HeroSliderSettings) => {
+  sliderSettingsMock = newSettings;
+  saveToStorage("lovespy_slider_settings", newSettings);
+};
+
+export const trackHeroView = (slideId: string) => {
+  heroSlidesMock = heroSlidesMock.map(s => {
+    if (s.id === slideId) {
+      return { ...s, views: (s.views || 0) + 1 };
+    }
+    return s;
+  });
+  saveToStorage("lovespy_hero_slides", heroSlidesMock);
+};
+
+export const trackHeroClick = (slideId: string) => {
+  heroSlidesMock = heroSlidesMock.map(s => {
+    if (s.id === slideId) {
+      return { ...s, clicks: (s.clicks || 0) + 1 };
+    }
+    return s;
+  });
+  saveToStorage("lovespy_hero_slides", heroSlidesMock);
+};
+
+export const getActiveHeroSlides = (
+  slides: HeroSlide[],
+  isMobile: boolean,
+  isTablet: boolean,
+  isLoggedIn: boolean
+): HeroSlide[] => {
+  const now = new Date();
+
+  return slides
+    .filter(slide => {
+      // 1. Is enabled & published
+      if (!slide.isEnabled || slide.status !== "published") return false;
+
+      // 2. Responsive display rules
+      if (isMobile && !slide.showMobile) return false;
+      if (!isMobile && isTablet && !slide.showTablet) return false;
+      if (!isMobile && !isTablet && !slide.showDesktop) return false;
+
+      // 3. Auth rules
+      if (isLoggedIn && !slide.showForLoggedIn) return false;
+      if (!isLoggedIn && !slide.showForGuests) return false;
+
+      // 4. Scheduling checks
+      if (slide.startDate) {
+        const startString = `${slide.startDate}T${slide.startTime || "00:00"}:00`;
+        const startDateTime = new Date(startString);
+        if (now < startDateTime) return false;
+      }
+      if (slide.endDate) {
+        const endString = `${slide.endDate}T${slide.endTime || "23:59"}:59`;
+        const endDateTime = new Date(endString);
+        if (now > endDateTime) return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+};
 export const setHeroBanner = (newHero: HeroSettings) => {
   heroSettingsMock = newHero;
   saveToStorage("lovespy_hero", newHero);
 };
 
-export const getSeasonalCampaigns = () => seasonalCampaignsMock;
+export const getSeasonalCampaigns = (): SeasonalCampaign[] => seasonalCampaignsMock;
 export const setSeasonalCampaigns = (newCampaigns: SeasonalCampaign[]) => {
   seasonalCampaignsMock = newCampaigns;
   saveToStorage("lovespy_campaigns", newCampaigns);
 };
 
-export const getShowcaseMedia = () => showcaseMediaMock;
+export const getShowcaseMedia = (): ShowcaseMedia[] => showcaseMediaMock;
 export const setShowcaseMedia = (newShowcase: ShowcaseMedia[]) => {
   showcaseMediaMock = newShowcase;
   saveToStorage("lovespy_showcase", newShowcase);
 };
 
-export const getAddons = () => addonsMock;
+export const getAddons = (): AddonItem[] => addonsMock;
 export const setAddons = (newAddons: AddonItem[]) => {
   addonsMock = newAddons;
   saveToStorage("lovespy_addons", newAddons);
 };
 
-export const getCoupons = () => couponsMock;
+export const getCoupons = (): CouponItem[] => couponsMock;
 export const setCoupons = (newCoupons: CouponItem[]) => {
   couponsMock = newCoupons;
   saveToStorage("lovespy_coupons", newCoupons);
 };
 
-export const getCustomers = () => customersMock;
+export const getCustomers = (): CustomerType[] => customersMock;
 export const setCustomers = (newCustomers: CustomerType[]) => {
   customersMock = newCustomers;
   saveToStorage("lovespy_customers", newCustomers);
@@ -654,7 +990,7 @@ export interface StoreSettings {
   smtpFrom?: string;
 }
 
-const defaultStoreSettings: StoreSettings = {
+export const defaultStoreSettings: StoreSettings = {
   deliveryCharge: 150,
   freeShippingThreshold: 2999,
   freeShippingEnabled: true,
@@ -671,42 +1007,15 @@ const defaultStoreSettings: StoreSettings = {
   smtpFrom: ""
 };
 
-let storeSettingsMock = loadFromStorage("lovespy_store_settings", defaultStoreSettings);
+export let storeSettingsMock = loadFromStorage("lovespy_store_settings", defaultStoreSettings);
 
 export const getStoreSettings = async (): Promise<StoreSettings> => {
-  const conn = await dbConnect();
-  if (conn) {
-    try {
-      let settings = await SettingsModel.findOne();
-      if (!settings) {
-        settings = await SettingsModel.create(defaultStoreSettings);
-      }
-      return settings.toObject();
-    } catch (err) {
-      console.error("Failed to load settings from MongoDB:", err);
-    }
-  }
   return storeSettingsMock;
 };
 
 export const setStoreSettings = async (newSettings: StoreSettings): Promise<void> => {
   storeSettingsMock = newSettings;
   saveToStorage("lovespy_store_settings", newSettings);
-
-  const conn = await dbConnect();
-  if (conn) {
-    try {
-      let settings = await SettingsModel.findOne();
-      if (settings) {
-        Object.assign(settings, newSettings);
-        await settings.save();
-      } else {
-        await SettingsModel.create(newSettings);
-      }
-    } catch (err) {
-      console.error("Failed to save settings to MongoDB:", err);
-    }
-  }
 };
 
 export const createOrder = (orderData: any) => {
@@ -776,59 +1085,13 @@ export const createOrder = (orderData: any) => {
   ordersMock.unshift(newOrder);
   saveToStorage("lovespy_orders", ordersMock);
 
-  // Save to MongoDB asynchronously
-  dbConnect().then((conn) => {
-    if (conn) {
-      const uId = mongoose.Types.ObjectId.isValid(newOrder.user_id)
-        ? new mongoose.Types.ObjectId(newOrder.user_id)
-        : new mongoose.Types.ObjectId(); // generated fallback
-
-      OrderModel.create({
-        orderNumber: newOrder.orderNumber,
-        userId: uId,
-        deliveryName: newOrder.delivery_name,
-        deliveryPhone: newOrder.delivery_phone,
-        deliveryLine1: newOrder.delivery_line1,
-        deliveryLine2: newOrder.delivery_line2 || "",
-        deliveryCity: newOrder.delivery_city,
-        deliveryState: newOrder.delivery_state,
-        deliveryPincode: newOrder.delivery_pincode,
-        status: "confirmed",
-        deliveryType: newOrder.delivery_type || "standard",
-        deliveryDate: newOrder.delivery_date,
-        deliverySlot: newOrder.delivery_slot || "Standard Slot",
-        subtotal: newOrder.subtotal,
-        shippingCharge: newOrder.shipping_charge || 0,
-        discountAmount: newOrder.discount_amount || 0,
-        totalAmount: newOrder.total_amount || newOrder.total || 0,
-        couponCode: newOrder.coupon_code || "",
-        pointsRedeemed: newOrder.points_redeemed || 0,
-        trackingNumber: newOrder.tracking,
-        items: newOrder.items || [],
-        razorpayPaymentId: newOrder.razorpayPaymentId,
-        razorpayOrderId: newOrder.razorpayOrderId,
-        razorpaySignature: newOrder.razorpaySignature,
-        shiprocketOrderId: newOrder.shiprocketOrderId || "",
-        shiprocketShipmentId: newOrder.shiprocketShipmentId || "",
-        shiprocketAwb: newOrder.shiprocketAwb || "",
-        shiprocketCourier: newOrder.shiprocketCourier || "",
-        shiprocketStatus: newOrder.shiprocketStatus || "Processing",
-        shiprocketDispatchDate: newOrder.shiprocketDispatchDate || ""
-      }).then((created) => {
-        console.log("Successfully persisted order to MongoDB:", created.orderNumber);
-      }).catch(err => {
-        console.error("Failed to create Order in MongoDB:", err);
-      });
-    }
-  });
-
   return newOrder;
 };
 
 export const updateOrderStatus = (id: string, status: string) => {
   const ord = ordersMock.find(o => o.id === id);
   if (ord) {
-    ord.status = status;
+    ord.status = status as any;
     saveToStorage("lovespy_orders", ordersMock);
     return true;
   }
@@ -842,22 +1105,6 @@ export const updateOrderDetails = async (id: string, updates: Partial<Order>) =>
     saveToStorage("lovespy_orders", ordersMock);
   }
 
-  const conn = await dbConnect();
-  if (conn) {
-    try {
-      const isMongoId = id.match(/^[0-9a-fA-F]{24}$/);
-      const query = isMongoId ? { _id: id } : { orderNumber: id };
-      const orderDoc = await OrderModel.findOne(query);
-      if (orderDoc) {
-        // Map the fields to schema names if needed, or assign directly
-        Object.assign(orderDoc, updates);
-        await orderDoc.save();
-        return true;
-      }
-    } catch (err) {
-      console.error("Failed to update order details in MongoDB:", err);
-    }
-  }
   return !!ord;
 };
 
@@ -885,4 +1132,81 @@ export const updateSurpriseOrderStatus = (id: string, status: any) => {
     return true;
   }
   return false;
+};
+
+// ==========================================
+// WISH THEMES (Admin-managed, for Hamper Builder Step 4)
+// ==========================================
+export interface WishTheme {
+  id: string;
+  name: string;
+  description: string;
+  bgColor: string;          // CSS color or gradient, e.g. "linear-gradient(135deg, #f9c4d2, #fde8f0)"
+  bgImage?: string;         // optional URL to a background image
+  decorations?: string;     // emoji or short label, e.g. "🌹💕"
+  previewColor?: string;    // short hex for the card accent, e.g. "#f472b6"
+}
+
+const defaultWishThemes: WishTheme[] = [
+  {
+    id: "romantic",
+    name: "Romantic Rose",
+    description: "Velvet roses, floating hearts",
+    bgColor: "linear-gradient(135deg, #fce7f3, #fbcfe8)",
+    decorations: "🌹💕",
+    previewColor: "#ec4899"
+  },
+  {
+    id: "cyberpunk",
+    name: "Cyber Neon",
+    description: "Glitch text, techno beats",
+    bgColor: "linear-gradient(135deg, #1e1b4b, #4c1d95)",
+    decorations: "⚡🎮",
+    previewColor: "#a855f7"
+  },
+  {
+    id: "retro",
+    name: "Retro Polaroid",
+    description: "Vintage journal, tape cassette",
+    bgColor: "linear-gradient(135deg, #fef3c7, #fde68a)",
+    decorations: "📷🎞️",
+    previewColor: "#f59e0b"
+  },
+  {
+    id: "disco",
+    name: "Party Disco",
+    description: "Sparkle lights, confetti drop",
+    bgColor: "linear-gradient(135deg, #e0e7ff, #c7d2fe)",
+    decorations: "🪩✨",
+    previewColor: "#6366f1"
+  }
+];
+
+let wishThemesMock: WishTheme[] = loadFromStorage("lovespy_wish_themes", defaultWishThemes);
+
+export const getThemes = (): WishTheme[] => {
+  wishThemesMock = loadFromStorage("lovespy_wish_themes", defaultWishThemes);
+  return wishThemesMock;
+};
+
+export const setThemes = (themes: WishTheme[]) => {
+  wishThemesMock = themes;
+  saveToStorage("lovespy_wish_themes", themes);
+};
+
+export const addTheme = (theme: Omit<WishTheme, "id">) => {
+  const newTheme: WishTheme = { ...theme, id: `theme-${Date.now()}` };
+  wishThemesMock = [...wishThemesMock, newTheme];
+  saveToStorage("lovespy_wish_themes", wishThemesMock);
+  return newTheme;
+};
+
+export const updateTheme = (id: string, updates: Partial<WishTheme>) => {
+  wishThemesMock = wishThemesMock.map(t => t.id === id ? { ...t, ...updates } : t);
+  saveToStorage("lovespy_wish_themes", wishThemesMock);
+};
+
+export const deleteTheme = (id: string) => {
+  wishThemesMock = wishThemesMock.filter(t => t.id !== id);
+  saveToStorage("lovespy_wish_themes", wishThemesMock);
 };
