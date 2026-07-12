@@ -680,6 +680,13 @@ const loadFromStorage = (key: string, fallback: any) => {
 const saveToStorage = (key: string, data: any) => {
   if (isClient) {
     localStorage.setItem(key, JSON.stringify(data));
+    fetch("/api/db/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, value: data })
+    }).catch((err) => {
+      console.error("Failed to sync key to MongoDB:", err);
+    });
   }
 };
 

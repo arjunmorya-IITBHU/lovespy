@@ -8,6 +8,7 @@ import LoginModal from "@/components/LoginModal";
 import ScrollToTop from "@/components/ScrollToTop";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
+import DbSyncProvider from "@/components/DbSyncProvider";
 import { Suspense } from "react";
 
 const inter = Inter({
@@ -47,19 +48,21 @@ export default function RootLayout({
       <body className={`${inter.variable} ${playfair.variable} ${cormorant.variable} font-sans bg-gradient-to-tr from-[#FCF8F8] via-[#FAF6F2] to-[#FFFBF7] min-h-screen text-brand-charcoal overflow-x-hidden antialiased`}>
         <AuthProvider>
           <CartProvider>
-            <Suspense fallback={null}>
-              <ScrollToTop />
-            </Suspense>
-            <div className="bg-brand-charcoal text-white py-2 text-center text-xs font-semibold overflow-hidden">
-              <span>💖 10% OFF on Orders Above ₹1,999! Code: LOVESPY10 💖</span>
-            </div>
-            <Navbar />
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[70vh]">
-              {children}
-            </main>
-            <AvatarWidget />
-            <LoginModal />
-            <Footer />
+            <DbSyncProvider>
+              <Suspense fallback={null}>
+                <ScrollToTop />
+              </Suspense>
+              <div className="bg-brand-charcoal text-white py-2 text-center text-xs font-semibold overflow-hidden">
+                <span>💖 10% OFF on Orders Above ₹1,999! Code: LOVESPY10 💖</span>
+              </div>
+              <Navbar />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-[70vh]">
+                {children}
+              </main>
+              <AvatarWidget />
+              <LoginModal />
+              <Footer />
+            </DbSyncProvider>
           </CartProvider>
         </AuthProvider>
       </body>
