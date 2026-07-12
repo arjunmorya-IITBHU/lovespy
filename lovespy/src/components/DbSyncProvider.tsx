@@ -8,8 +8,12 @@ export default function DbSyncProvider({ children }: { children: React.ReactNode
   const [dbError, setDbError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/db/sync")
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    fetch("/api/db/sync", { signal: controller.signal })
       .then((res) => {
+        clearTimeout(timeoutId);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: Failed to reach database sync API.`);
         }
@@ -36,6 +40,7 @@ export default function DbSyncProvider({ children }: { children: React.ReactNode
         }
       })
       .catch((err) => {
+        clearTimeout(timeoutId);
         console.error("Failed to sync DB from MongoDB:", err);
         setDbError(err.message || "Network error. Failed to connect to database server.");
       });
