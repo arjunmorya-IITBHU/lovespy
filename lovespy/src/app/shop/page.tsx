@@ -30,20 +30,45 @@ function ShopContent() {
   const [vibe, setVibe] = useState("Cute");
   const [aiResults, setAiResults] = useState<Product[] | null>(null);
 
+  // Load initial filters (from sessionStorage or URL query params)
   useEffect(() => {
-    const catParam = searchParams.get("category");
-    if (catParam) {
-      setSelectedCategory(catParam);
-    }
-    const tabParam = searchParams.get("tab");
-    if (tabParam === "hampers") {
-      setActiveTab("hampers");
-    } else if (tabParam === "gifts") {
-      setActiveTab("gifts");
-    } else if (tabParam === "ai") {
-      setActiveTab("ai");
+    try {
+      const saved = sessionStorage.getItem("lovespy_shop_filters");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.selectedCategory) setSelectedCategory(parsed.selectedCategory);
+        if (parsed.maxPrice) setMaxPrice(parsed.maxPrice);
+        if (parsed.searchQuery) setSearchQuery(parsed.searchQuery);
+        if (parsed.sortBy) setSortBy(parsed.sortBy);
+        if (parsed.activeTab) setActiveTab(parsed.activeTab);
+      }
+
+      const catParam = searchParams.get("category");
+      if (catParam) {
+        setSelectedCategory(catParam);
+      }
+      const tabParam = searchParams.get("tab");
+      if (tabParam === "hampers") {
+        setActiveTab("hampers");
+      } else if (tabParam === "gifts") {
+        setActiveTab("gifts");
+      } else if (tabParam === "ai") {
+        setActiveTab("ai");
+      }
+    } catch (e) {
+      console.error("Failed to load shop filters:", e);
     }
   }, [searchParams]);
+
+  // Save filters to sessionStorage whenever they change
+  useEffect(() => {
+    try {
+      const filters = { selectedCategory, maxPrice, searchQuery, sortBy, activeTab };
+      sessionStorage.setItem("lovespy_shop_filters", JSON.stringify(filters));
+    } catch (e) {
+      console.error("Failed to save shop filters:", e);
+    }
+  }, [selectedCategory, maxPrice, searchQuery, sortBy, activeTab]);
 
   const isFirstRender = useRef(true);
 

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Music, Image as ImageIcon, Heart, Gift, Play, Pause, ChevronRight, Check, User as UserIcon, Paperclip, Paintbrush, MailOpen, X, Mic, Eye, PlayCircle, ShieldCheck } from "lucide-react";
+import { Sparkles, Music, Image as ImageIcon, Heart, Gift, Play, Pause, ChevronRight, Check, User as UserIcon, Paperclip, Paintbrush, MailOpen, X, Mic, Eye, PlayCircle, ShieldCheck, Star } from "lucide-react";
 import Logo from "@/components/Logo";
 import { getShowcaseMedia, ShowcaseMedia } from "@/lib/db";
 
@@ -14,6 +14,8 @@ export default function CustomSurprisePage() {
   const [senderName, setSenderName] = useState("");
   const [showSimulateModal, setShowSimulateModal] = useState(false);
   const [simulateData, setSimulateData] = useState<any>(null);
+  const [showDwPreviewModal, setShowDwPreviewModal] = useState(false);
+  const [isDwPlaying, setIsDwPlaying] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && !(window as any).Razorpay) {
@@ -513,10 +515,18 @@ export default function CustomSurprisePage() {
               </div>
             </div>
 
-            <div className="space-y-3 pt-2">
+            <div className="flex flex-col gap-2.5 pt-2">
               <button
+                type="button"
+                onClick={() => setShowDwPreviewModal(true)}
+                className="w-full py-3.5 border border-brand-pink text-brand-pink bg-white hover:bg-brand-pinkLight rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Eye className="w-4 h-4" /> Live Sandbox Preview
+              </button>
+              <button
+                type="button"
                 onClick={handleAddToCart}
-                className="w-full py-3.5 bg-gradient-to-r from-brand-pink to-brand-lavender text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-brand-pink/20 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-gradient-to-r from-brand-pink to-brand-lavender text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-brand-pink/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Gift className="w-4 h-4" /> Add to Cart (₹299)
               </button>
@@ -704,6 +714,129 @@ export default function CustomSurprisePage() {
           </div>
         </div>
       )}
+
+      {/* DIGITAL WISH SURPRISE PREVIEW MODAL */}
+      <AnimatePresence>
+        {showDwPreviewModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className={`max-w-xl w-full rounded-3xl bg-gradient-to-b ${style} border-4 shadow-2xl p-6 sm:p-10 relative overflow-hidden flex flex-col justify-between min-h-[85vh] mx-auto animate-slide-up`}>
+              
+              {/* Animated Theme Floating Icons */}
+              <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
+                <div className="text-xl absolute top-12 left-1/4 animate-bounce">{themeEmoji}</div>
+                <div className="text-xl absolute top-24 right-1/4 animate-pulse">🎂</div>
+                <div className="text-xl absolute top-2/3 left-12 animate-ping">💖</div>
+                <div className="text-xl absolute top-1/2 right-12 animate-bounce-slow">✨</div>
+              </div>
+
+              {/* Header */}
+              <div className="flex justify-between items-center relative z-10">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-brand-pink text-xs font-bold">🎀 Lovespy</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{theme.toUpperCase()} SURPRISE</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowDwPreviewModal(false);
+                    setIsDwPlaying(false);
+                  }}
+                  className="px-3.5 py-1.5 bg-white/80 hover:bg-white text-slate-800 rounded-full text-[10px] font-extrabold shadow-sm cursor-pointer border-0"
+                >
+                  Close Sandbox Preview
+                </button>
+              </div>
+
+              {/* Middle Board */}
+              <div className="space-y-6 my-8 text-center relative z-10">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-pink bg-white/80 px-3 py-1 rounded-full shadow-sm">
+                    Custom surprise template
+                  </span>
+                  <h2 className="font-display font-extrabold text-2xl text-slate-800 pt-2">
+                    For {receiverName || "[Receiver Name]"}
+                  </h2>
+                </div>
+
+                {/* Spinning Vinyl Record */}
+                <div className="flex justify-center my-4">
+                  <div
+                    className={`w-28 h-28 rounded-full bg-slate-900 border-4 border-slate-700 shadow-2xl flex items-center justify-center relative overflow-hidden ${isDwPlaying ? 'animate-spin-slow' : ''}`}
+                  >
+                    <div className="w-8 h-8 bg-brand-pink rounded-full border-2 border-slate-800 flex items-center justify-center text-white text-[8px] font-bold">
+                      {isDwPlaying ? '♫' : '■'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Song Info / Player */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    onClick={() => setIsDwPlaying(!isDwPlaying)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-800 rounded-full text-xs font-bold shadow-md hover:bg-slate-50 transition-colors border-0 cursor-pointer"
+                  >
+                    {isDwPlaying ? (
+                      <>
+                        <Pause className="w-3.5 h-3.5 text-brand-pink fill-brand-pink" /> Pause Audio
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 text-brand-pink fill-brand-pink" /> Play Requested Audio
+                      </>
+                    )}
+                  </button>
+                  <span className="text-[9px] text-slate-500 font-bold mt-1">Requested: {songName || "Default Romantic Track"}</span>
+                </div>
+
+                {/* Heartfelt Banner Note Box */}
+                <div className="bg-white/90 p-5 rounded-2xl border border-white/50 shadow-sm leading-relaxed max-w-sm mx-auto text-xs text-slate-700 text-left">
+                  <p className="font-bold text-slate-800 mb-2 border-b border-brand-pink/5 pb-1">
+                    {mainMessage || 'Happy Birthday Wishes!'}
+                  </p>
+                  <p className="italic text-[11px]">
+                    "{loveLetter || 'Your custom letter/messages will show up in this space.'}"
+                  </p>
+                  
+                  {/* Conditional wish columns */}
+                  {birthdayWish ? (
+                    <div className="mt-3 p-2 bg-yellow-50/50 rounded-xl text-[10px] text-left border border-yellow-200/40">
+                      🎂 <strong>Birthday Note:</strong> {birthdayWish}
+                    </div>
+                  ) : null}
+                  {anniversaryWish ? (
+                    <div className="mt-3 p-2 bg-pink-50/50 rounded-xl text-[10px] text-left border border-pink-200/40">
+                      💍 <strong>Anniversary Note:</strong> {anniversaryWish}
+                    </div>
+                  ) : null}
+                  
+                  <p className="text-[9px] text-slate-400 mt-3 font-extrabold uppercase tracking-wider text-right">
+                    — From {senderName || '[Sender Name]'}
+                  </p>
+                </div>
+
+                {/* Polaroid Photo Album Grid */}
+                {photos.length > 0 ? (
+                  <div className="space-y-2 pt-4">
+                    <p className="text-[9px] font-extrabold uppercase text-slate-500 tracking-wider">Photo Polaroid Album</p>
+                    <div className="flex gap-4 overflow-x-auto justify-center pb-2 px-4 scrollbar-none">
+                      {photos.map((url, idx) => (
+                        <div key={idx} className="w-24 bg-white p-1.5 pb-5 rounded-md shadow-md rotate-2 border border-slate-100 flex-shrink-0">
+                          <img src={url} className="w-full h-16 object-cover rounded-sm" />
+                          <div className="text-[8px] text-slate-400 mt-1 font-bold text-center">Memory #{idx + 1}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Footer */}
+              <div className="text-center relative z-10 text-[8px] text-slate-400 font-semibold pt-4 border-t border-black/5">
+                Designed via Lovespy Gifting Store. Share Love, Secure Smiles.
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
