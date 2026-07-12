@@ -1443,7 +1443,7 @@
       // Admin panel link visibility
       const adminLink = document.getElementById('dropdown-admin-panel');
       if (adminLink) {
-        if (STATE.user && STATE.user.role === 'admin') {
+        if (STATE.user && STATE.user.name === 'Arjun Morya' && STATE.user.phone === '9950669088') {
           adminLink.classList.remove('hidden');
         } else {
           adminLink.classList.add('hidden');
@@ -2094,7 +2094,8 @@
     function navigateTo(view, subview = '') {
       // Role security check
       if (view === 'admin') {
-        if (STATE.user && STATE.user.id !== 'usr-guest' && STATE.user.role !== 'admin') {
+        const isProfileAdmin = STATE.user && STATE.user.name === 'Arjun Morya' && STATE.user.phone === '9950669088';
+        if (!isProfileAdmin) {
           alert("Unauthorized access. Admins only.");
           navigateTo('home');
           return;
@@ -6973,6 +6974,14 @@
       STATE.user.name = name;
       STATE.user.phone = phone;
 
+      if (name === "Arjun Morya" && phone === "9950669088") {
+        STATE.user.role = "admin";
+        STATE.isAdminAuthenticated = true;
+      } else {
+        STATE.user.role = "customer";
+        STATE.isAdminAuthenticated = false;
+      }
+
       // Sync with Admin Customer Directory
       if (STATE.user && STATE.user.id !== 'usr-guest') {
         if (!DB.customers) DB.customers = [];
@@ -7151,65 +7160,14 @@
 
     // 9. ADMIN PANEL VIEW
     function renderAdmin(container, subview) {
-      if (!STATE.isAdminAuthenticated) {
+      const isProfileAdmin = STATE.user && STATE.user.name === 'Arjun Morya' && STATE.user.phone === '9950669088';
+      if (!isProfileAdmin) {
         container.innerHTML = `
           <div class="min-h-[60vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-            <div class="max-w-md w-full space-y-8 glass-card p-10 border border-brand-pink/20 rounded-3xl shadow-xl relative overflow-hidden bg-white/70">
-              <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#FF6FAE_1px,transparent_1px)] [background-size:16px_16px]"></div>
-              
-              <div class="text-center space-y-2">
-                <div class="flex justify-center text-4xl">
-                  🕵️‍♂️🎀
-                </div>
-                <h2 class="mt-6 text-center text-2xl font-display font-extrabold text-brand-charcoal">
-                  Operator Master Login
-                </h2>
-                <p class="text-xs text-brand-gray">
-                  Enter secret credentials to manage Lovespy inventory & orders.
-                </p>
-              </div>
-              
-              <div class="mt-8 space-y-6">
-                <div class="rounded-md shadow-sm space-y-4">
-                  <div class="relative">
-                    <input
-                      type="text"
-                      id="admin-username"
-                      required
-                      class="appearance-none rounded-xl relative block w-full px-3 py-3 border border-brand-pink/15 placeholder-slate-400 text-slate-800 focus:outline-none focus:ring-brand-pink focus:border-brand-pink text-xs bg-white/70"
-                      placeholder="Master Username"
-                    />
-                  </div>
-                  <div class="relative">
-                    <input
-                      type="password"
-                      id="admin-password"
-                      required
-                      class="appearance-none rounded-xl relative block w-full px-3 py-3 border border-brand-pink/15 placeholder-slate-400 text-slate-800 focus:outline-none focus:ring-brand-pink focus:border-brand-pink text-xs bg-white/70"
-                      placeholder="Master Password"
-                    />
-                  </div>
-                </div>
-
-                <div id="admin-login-error" class="text-[10px] text-red-500 font-bold text-center bg-red-50 py-2 rounded-lg border border-red-100 hidden">
-                  ⚠️ Incorrect master operator credentials. Access denied.
-                </div>
-
-                <div class="flex gap-4">
-                  <button
-                    onclick="navigateTo('home')"
-                    class="flex-1 py-3 border border-brand-pink/10 hover:bg-slate-50 text-brand-charcoal text-center rounded-xl text-xs font-bold transition-all cursor-pointer"
-                  >
-                    Back to Store
-                  </button>
-                  <button
-                    onclick="submitAdminLogin()"
-                    class="flex-1 py-3 bg-gradient-to-r from-brand-pink to-brand-lavender text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-brand-pink/20 transition-all cursor-pointer"
-                  >
-                    Access Dashboard
-                  </button>
-                </div>
-              </div>
+            <div class="max-w-md w-full space-y-8 glass-card p-10 border border-brand-pink/20 rounded-3xl shadow-xl bg-white text-center">
+              <h2 class="text-2xl font-display font-extrabold text-brand-charcoal">Unauthorized Access</h2>
+              <p class="text-xs text-brand-gray mt-2">Only the designated administrator Arjun Morya is authorized to access this dashboard.</p>
+              <button onclick="navigateTo('home')" class="mt-6 px-8 py-3.5 bg-brand-pink text-white rounded-full text-xs font-bold hover:shadow-lg transition-all">Back to Store</button>
             </div>
           </div>
         `;

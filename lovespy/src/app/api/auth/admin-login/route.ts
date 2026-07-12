@@ -6,7 +6,46 @@ const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "fallback-secret-key-
 
 export async function POST(request: Request) {
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const { username, password, name, phone } = body;
+
+    // Check profile-based admin credentials
+    if (name === "Arjun Morya" && phone === "9950669088") {
+      const token = jwt.sign(
+        {
+          id: "usr-admin-arjun",
+          name: "Arjun Morya",
+          email: "arjun@lovespy.in",
+          phone: "9950669088",
+          role: "admin"
+        },
+        JWT_ACCESS_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      const cookieStore = await cookies();
+      cookieStore.set("lovespy_admin_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        path: "/"
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Admin login successful.",
+        user: {
+          id: "usr-admin-arjun",
+          name: "Arjun Morya",
+          email: "arjun@lovespy.in",
+          phone: "9950669088",
+          points: 9999,
+          role: "admin"
+        },
+        token
+      });
+    }
 
     if (!username || !password) {
       return NextResponse.json(

@@ -23,6 +23,7 @@ interface AuthContextType {
   verifyOTP: (payload: { phone?: string; email?: string; otp: string; name?: string; registerPhone?: string }) => Promise<{ success: boolean; needsRegistrationDetails?: boolean; error?: string }>;
   loginWithoutOtp: (name: string, phone: string) => Promise<{ success: boolean; error?: string }>;
   adminLogin: (payload: { username?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
+  authenticateProfileAdmin: (name: string, phone: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
 }
@@ -221,6 +222,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: "Network error. Failed to login." };
     }
   };
+  const authenticateProfileAdmin = async (name: string, phone: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
+        setUser(data.user);
+        setToken(data.token);
+        localStorage.setItem("lovespy_user", JSON.stringify(data.user));
+        localStorage.setItem("lovespy_token", data.token);
+        syncUserLoginToDirectory(data.user);
+        return { success: true };
+      }
+      return { success: false, error: data.error || "Profile admin authentication failed." };
+    } catch (err: any) {
+      console.error(err);
+      return { success: false, error: "Network error. Failed to authenticate admin." };
+    }
+  };
 
   const logout = () => {
     if (user && user.role === "admin") {
@@ -264,6 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyOTP,
         loginWithoutOtp,
         adminLogin,
+        authenticateProfileAdmin,
         logout,
         fetchWithAuth
       }}

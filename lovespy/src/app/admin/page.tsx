@@ -84,20 +84,18 @@ import {
 import Logo from "@/components/Logo";
 
 export default function AdminDashboard() {
-  const { user, adminLogin } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
     if (user) {
-      if (user.role === "admin") {
+      const isProfileAdmin = user.name === "Arjun Morya" && user.phone === "9950669088";
+      if (isProfileAdmin) {
         setIsAuthenticated(true);
-      } else if (user.id !== "usr-guest") {
+      } else {
         alert("Unauthorized access. Admins only.");
         router.push("/");
       }
@@ -293,22 +291,7 @@ export default function AdminDashboard() {
 
   const totalSales = ordersList.reduce((sum, o) => sum + (o.total || 0), 0) + surpriseOrdersList.length * 299;
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-    try {
-      const result = await adminLogin({ username, password });
-      if (result.success) {
-        setIsAuthenticated(true);
-        setLoginError("");
-      } else {
-        setLoginError(result.error || "Incorrect master operator credentials. Access denied.");
-      }
-    } catch (err) {
-      console.error(err);
-      setLoginError("An unexpected error occurred during login.");
-    }
-  };
+
 
   const handleStatusChange = (orderId: string, status: any) => {
     updateOrderStatus(orderId, status);
@@ -1020,7 +1003,6 @@ export default function AdminDashboard() {
     setCustomersList(updated);
     setCustomers(updated);
   };
-
   const handleDeleteCustomer = (id: string) => {
     openDeleteConfirm("Customer Record", () => {
       const updated = customersList.filter((c) => c.id !== id);
@@ -1030,74 +1012,18 @@ export default function AdminDashboard() {
     });
   };
 
-  // Login Form view
+  // Loading view while verifying redirect
   if (!isAuthenticated) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 glass-card p-10 border border-brand-pink/20 rounded-3xl shadow-xl bg-white">
-          <div className="text-center space-y-2">
-            <div className="flex justify-center">
-              <Logo className="w-20 h-20 animate-pulse-soft" />
-            </div>
-            <h2 className="mt-6 text-center text-2xl font-display font-extrabold text-brand-charcoal">
-              Operator Master Login
-            </h2>
-            <p className="text-xs text-brand-gray">
-              Enter master credentials to gain full CMS access to Lovespy.
-            </p>
-          </div>
-
-          <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-            <div className="rounded-md shadow-sm space-y-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <UserIcon className="h-4 w-4 text-brand-gray" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="appearance-none rounded-xl relative block w-full pl-10 pr-3 py-3 border border-brand-pink/15 placeholder-slate-400 text-slate-800 focus:outline-none focus:ring-brand-pink focus:border-brand-pink text-xs bg-white"
-                  placeholder="Master Username"
-                />
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-4 w-4 text-brand-gray" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none rounded-xl relative block w-full pl-10 pr-3 py-3 border border-brand-pink/15 placeholder-slate-400 text-slate-800 focus:outline-none focus:ring-brand-pink focus:border-brand-pink text-xs bg-white"
-                  placeholder="Master Password"
-                />
-              </div>
-            </div>
-
-            {loginError && (
-              <p className="text-[10px] text-red-500 font-bold text-center bg-red-50 py-2 rounded-lg border border-red-100 animate-pulse">
-                ⚠️ {loginError}
-              </p>
-            )}
-
-            <div className="flex gap-4">
-              <Link
-                href="/"
-                className="flex-1 py-3 border border-brand-pink/10 hover:bg-slate-50 text-brand-charcoal text-center rounded-xl text-xs font-bold transition-all"
-              >
-                Back to Store
-              </Link>
-              <button
-                type="submit"
-                className="flex-1 py-3 bg-gradient-to-r from-brand-pink to-brand-lavender text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-brand-pink/20 transition-all"
-              >
-                Access Dashboard
-              </button>
-            </div>
-          </form>
+        <div className="max-w-md w-full text-center space-y-4 glass-card p-10 border border-brand-pink/20 rounded-3xl shadow-xl bg-white">
+          <Logo className="w-20 h-20 mx-auto animate-pulse-soft" />
+          <h2 className="text-xl font-display font-extrabold text-brand-charcoal">
+            Verifying Admin Session...
+          </h2>
+          <p className="text-xs text-brand-gray">
+            Redirecting to home page if not authenticated as Arjun Morya.
+          </p>
         </div>
       </div>
     );
