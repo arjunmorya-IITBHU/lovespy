@@ -457,7 +457,7 @@
             <a href="#" onclick="navigateTo('dashboard', 'orders'); return false;"
               class="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-brand-charcoal hover:bg-brand-pinkLight hover:text-brand-pink transition-colors"><i
                 data-lucide="package" class="w-4 h-4"></i> My Orders</a>
-            <a href="#" onclick="navigateTo('admin'); return false;"
+            <a href="#" onclick="navigateTo('admin'); return false;" id="dropdown-admin-panel"
               class="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-brand-charcoal hover:bg-brand-lavenderLight hover:text-brand-lavender transition-colors border-t border-brand-pink/5 mt-1"><i
                 data-lucide="shield-check" class="w-4 h-4"></i> Admin Panel</a>
           </div>
@@ -1198,6 +1198,12 @@
     let STATE = {
       user: null, // Start as guest to showcase mandatory login gate
       shopTypeFilter: 'gifts',
+      shopFilters: {
+        category: 'all',
+        maxPrice: 5000,
+        search: '',
+        sort: 'popular'
+      },
       cart: [],
       wishlist: [],
       addresses: [],
@@ -1432,6 +1438,16 @@
       } else {
         document.getElementById('nav-avatar').src = "https://api.dicebear.com/7.x/adventurer/svg?seed=Guest";
         document.getElementById('dropdown-username').innerText = "Guest Gifter";
+      }
+
+      // Admin panel link visibility
+      const adminLink = document.getElementById('dropdown-admin-panel');
+      if (adminLink) {
+        if (STATE.user && STATE.user.role === 'admin') {
+          adminLink.classList.remove('hidden');
+        } else {
+          adminLink.classList.add('hidden');
+        }
       }
       lucide.createIcons();
 
@@ -2035,11 +2051,69 @@
     }
     // Floating AI selector widget helpers removed
 
+    // --- NAVIGATION HISTORY HANDLER ---
+    let isHistoryNavigating = false;
+
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({
+        view: STATE.currentView,
+        subview: STATE.currentSubView,
+        selectedProductId: STATE.selectedProductId,
+        shopFilters: STATE.shopFilters,
+        checkoutStep: STATE.checkoutStep
+      }, '', window.location.hash || '#' + STATE.currentView);
+    }
+
+    window.addEventListener('popstate', function (event) {
+      if (event.state) {
+        STATE.currentView = event.state.view;
+        STATE.currentSubView = event.state.subview;
+        STATE.selectedProductId = event.state.selectedProductId;
+        if (event.state.shopFilters) {
+          STATE.shopFilters = event.state.shopFilters;
+        }
+        if (event.state.checkoutStep) {
+          STATE.checkoutStep = event.state.checkoutStep;
+        }
+        saveState();
+
+        isHistoryNavigating = true;
+        navigateTo(event.state.view, event.state.subview);
+        isHistoryNavigating = false;
+      }
+    });
+
+    window.addEventListener('load', function () {
+      const hash = window.location.hash.substring(1);
+      if (hash && ['home', 'shop', 'product-detail', 'hamper-builder', 'cart', 'checkout', 'tracking', 'dashboard', 'admin', 'digital-wishes', 'ai-recommender'].includes(hash)) {
+        navigateTo(hash, STATE.currentSubView);
+      }
+    });
+
     // --- NAVIGATION ROUTER ---
     function navigateTo(view, subview = '') {
+      // Role security check
+      if (view === 'admin') {
+        if (STATE.user && STATE.user.id !== 'usr-guest' && STATE.user.role !== 'admin') {
+          alert("Unauthorized access. Admins only.");
+          navigateTo('home');
+          return;
+        }
+      }
+
       STATE.currentView = view;
       STATE.currentSubView = subview;
       saveState();
+
+      if (!isHistoryNavigating && window.history && window.history.pushState) {
+        window.history.pushState({
+          view: view,
+          subview: subview,
+          selectedProductId: STATE.selectedProductId,
+          shopFilters: STATE.shopFilters,
+          checkoutStep: STATE.checkoutStep
+        }, '', '#' + view);
+      }
 
       // Reset scroll immediately
       window.scrollTo(0, 0);
@@ -2176,7 +2250,8 @@
       DB.users = [
         { name: "Priya S.", phone: "9876543210", email: "priya@example.com", points: 240 },
         { name: "Arjun Mehta", phone: "9988776655", email: "arjun.m@gmail.com", points: 320 },
-        { name: "Ananya Sharma", phone: "9876500000", email: "ananya@gmail.com", points: 150 }
+        { name: "Ananya Sharma", phone: "9876500000", email: "ananya@gmail.com", points: 150 },
+        { name: "Operator Master", phone: "9900887766", email: "admin@lovespy.in", points: 9999, role: "admin" }
       ];
     }
 
@@ -3228,6 +3303,30 @@
 
         </div>
       `;
+      // Restore filters from state
+      if (STATE.shopTypeFilter !== 'ai') {
+        const catSelect = document.getElementById('filter-category');
+        const priceInput = document.getElementById('filter-price');
+        const searchInput = document.getElementById('filter-search');
+        const sortSelect = document.getElementById('filter-sort');
+        const priceVal = document.getElementById('price-val');
+
+        if (catSelect && STATE.shopFilters && STATE.shopFilters.category) {
+          catSelect.value = STATE.shopFilters.category;
+        }
+        if (priceInput && STATE.shopFilters && STATE.shopFilters.maxPrice) {
+          priceInput.value = STATE.shopFilters.maxPrice;
+        }
+        if (priceVal && STATE.shopFilters && STATE.shopFilters.maxPrice) {
+          priceVal.innerText = `₹${STATE.shopFilters.maxPrice}`;
+        }
+        if (searchInput && STATE.shopFilters && STATE.shopFilters.search !== undefined) {
+          searchInput.value = STATE.shopFilters.search;
+        }
+        if (sortSelect && STATE.shopFilters && STATE.shopFilters.sort) {
+          sortSelect.value = STATE.shopFilters.sort;
+        }
+      }
       // Apply filters initially to load products
       applyFilters();
     }
@@ -3517,6 +3616,14 @@
       const maxPrice = parseFloat(document.getElementById('filter-price').value);
       const search = document.getElementById('filter-search').value.toLowerCase().trim();
       const sort = document.getElementById('filter-sort').value;
+
+      STATE.shopFilters = {
+        category: category,
+        maxPrice: maxPrice,
+        search: document.getElementById('filter-search').value,
+        sort: sort
+      };
+      saveState();
 
       let items = DB.products;
       if (STATE.shopTypeFilter === 'gifts') {
@@ -4795,15 +4902,7 @@
     }
 
     function builderNext(nextStep) {
-      STATE.currentSubView = nextStep;
-      saveState();
-      const container = document.getElementById('app-container');
-      if (STATE.currentView === 'hamper-builder') {
-        renderHamperBuilder(container);
-      } else {
-        renderBuilderStep();
-      }
-      lucide.createIcons();
+      navigateTo('hamper-builder', nextStep);
     }
 
     function calculateBuilderItemsTotal() {

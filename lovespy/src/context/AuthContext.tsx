@@ -22,6 +22,7 @@ interface AuthContextType {
   sendOTP: (payload: { phone?: string; email?: string }) => Promise<{ success: boolean; exists?: boolean; error?: string }>;
   verifyOTP: (payload: { phone?: string; email?: string; otp: string; name?: string; registerPhone?: string }) => Promise<{ success: boolean; needsRegistrationDetails?: boolean; error?: string }>;
   loginWithoutOtp: (name: string, phone: string) => Promise<{ success: boolean; error?: string }>;
+  adminLogin: (payload: { username?: string; password?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
 }
@@ -198,7 +199,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const adminLogin = async (payload: { username?: string; password?: string }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
+        setUser(data.user);
+        setToken(data.token);
+        localStorage.setItem("lovespy_user", JSON.stringify(data.user));
+        localStorage.setItem("lovespy_token", data.token);
+        syncUserLoginToDirectory(data.user);
+        return { success: true };
+      }
+      return { success: false, error: data.error || "Admin login failed." };
+    } catch (err: any) {
+      console.error(err);
+      return { success: false, error: "Network error. Failed to login." };
+    }
+  };
+
   const logout = () => {
+    if (user && user.role === "admin") {
+      fetch("/api/auth/admin-login", { method: "DELETE" }).catch(err => console.error("Admin logout API error:", err));
+    }
     const guestUser = {
       id: "usr-guest",
       name: "Guest Gifter",
@@ -236,6 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sendOTP,
         verifyOTP,
         loginWithoutOtp,
+        adminLogin,
         logout,
         fetchWithAuth
       }}

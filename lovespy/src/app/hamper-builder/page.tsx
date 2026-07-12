@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { getHamperBoxes, getProducts, getAddons, getEffectiveStock, getThemes, WishTheme } from "@/lib/db";
@@ -47,7 +47,43 @@ export default function HamperBuilder() {
     removeCoupon
   } = useCart();
 
-  const [activeStep, setActiveStep] = useState<number>(1);
+  const [activeStep, setActiveStepState] = useState<number>(1);
+
+  const setActiveStep = (step: number) => {
+    setActiveStepState(step);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("step", step.toString());
+      window.history.pushState({ step }, "", url.toString());
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const step = params.get("step");
+    if (step) {
+      setActiveStepState(parseInt(step));
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.set("step", "1");
+      window.history.replaceState({ step: 1 }, "", url.toString());
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && typeof e.state.step === "number") {
+        setActiveStepState(e.state.step);
+      } else {
+        const p = new URLSearchParams(window.location.search);
+        const s = p.get("step");
+        setActiveStepState(s ? parseInt(s) : 1);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
   const [selectedCat, setSelectedCat] = useState("all");
   const [couponCode, setCouponCode] = useState("");
   const [couponMsg, setCouponMsg] = useState("");

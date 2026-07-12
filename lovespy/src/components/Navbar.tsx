@@ -90,7 +90,9 @@ export default function Navbar() {
                 </div>
                 <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-charcoal hover:bg-brand-pinkLight hover:text-brand-pink transition-colors"><UserIcon className="w-4 h-4" /> My Profile</Link>
                 <Link href="/dashboard?tab=orders" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-charcoal hover:bg-brand-pinkLight hover:text-brand-pink transition-colors"><ShoppingBag className="w-4 h-4" /> My Orders</Link>
-                <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-charcoal hover:bg-brand-lavenderLight hover:text-brand-lavender transition-colors border-t border-brand-pink/5"><ShieldCheck className="w-4 h-4" /> Admin Panel</Link>
+                {user && user.role === "admin" && (
+                  <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-brand-charcoal hover:bg-brand-lavenderLight hover:text-brand-lavender transition-colors border-t border-brand-pink/5"><ShieldCheck className="w-4 h-4" /> Admin Panel</Link>
+                )}
               </div>
             )}
           </div>

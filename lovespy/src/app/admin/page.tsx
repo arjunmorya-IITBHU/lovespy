@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import {
   getProducts,
   setProducts,
@@ -82,11 +84,25 @@ import {
 import Logo from "@/components/Logo";
 
 export default function AdminDashboard() {
+  const { user, adminLogin } = useAuth();
+  const router = useRouter();
+
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      if (user.role === "admin") {
+        setIsAuthenticated(true);
+      } else if (user.id !== "usr-guest") {
+        alert("Unauthorized access. Admins only.");
+        router.push("/");
+      }
+    }
+  }, [user, router]);
 
   const [activeTab, setActiveTab] = useState<
     | "offers"
@@ -277,13 +293,20 @@ export default function AdminDashboard() {
 
   const totalSales = ordersList.reduce((sum, o) => sum + (o.total || 0), 0) + surpriseOrdersList.length * 299;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.toUpperCase() === "LOVESPYAKM" && password === "@aA718718718") {
-      setIsAuthenticated(true);
-      setLoginError("");
-    } else {
-      setLoginError("Incorrect master operator credentials. Access denied.");
+    setLoginError("");
+    try {
+      const result = await adminLogin({ username, password });
+      if (result.success) {
+        setIsAuthenticated(true);
+        setLoginError("");
+      } else {
+        setLoginError(result.error || "Incorrect master operator credentials. Access denied.");
+      }
+    } catch (err) {
+      console.error(err);
+      setLoginError("An unexpected error occurred during login.");
     }
   };
 
