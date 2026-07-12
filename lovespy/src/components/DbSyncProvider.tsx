@@ -14,6 +14,8 @@ export default function DbSyncProvider({ children }: { children: React.ReactNode
           Object.keys(data.data).forEach((key) => {
             localStorage.setItem(key, JSON.stringify(data.data[key]));
           });
+        } else {
+          console.warn("[MongoDB Connection Warning] Server failed to fetch live database snapshot. Falling back to local browser cache. Details:", data.error);
         }
         setLoaded(true);
       })

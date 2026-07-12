@@ -684,9 +684,22 @@ const saveToStorage = (key: string, data: any) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, value: data })
-    }).catch((err) => {
-      console.error("Failed to sync key to MongoDB:", err);
-    });
+    })
+      .then((res) => res.json())
+      .then((resData) => {
+        if (!resData.success) {
+          console.error(`[MongoDB Sync Error] Failed to sync ${key}:`, resData.error);
+          if (window.location.pathname.startsWith("/admin")) {
+            alert(`⚠️ WARNING: Failed to save changes to production cloud database. Your changes are only saved locally on this browser.\n\nError: ${resData.error || "Unknown server error"}`);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to sync key to MongoDB:", err);
+        if (window.location.pathname.startsWith("/admin")) {
+          alert(`⚠️ WARNING: Network error. Failed to save changes to production database.\n\nError: ${err.message}`);
+        }
+      });
   }
 };
 

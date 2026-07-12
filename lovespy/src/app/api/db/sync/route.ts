@@ -6,7 +6,10 @@ export async function GET() {
   try {
     const conn = await dbConnect();
     if (!conn) {
-      return NextResponse.json({ success: true, data: {} });
+      return NextResponse.json({ 
+        success: false, 
+        error: "Database connection failed. Please ensure MONGODB_URI is correctly configured in Vercel settings and Atlas IP Access List (Whitelist) allows connections from 0.0.0.0/0." 
+      }, { status: 500 });
     }
 
     const items = await KeyValueStoreModel.find({});
@@ -31,13 +34,18 @@ export async function POST(request: Request) {
     }
 
     const conn = await dbConnect();
-    if (conn) {
-      await KeyValueStoreModel.findOneAndUpdate(
-        { key },
-        { value },
-        { upsert: true, new: true }
-      );
+    if (!conn) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Database connection failed. Please ensure MONGODB_URI is correctly configured in Vercel settings and Atlas IP Access List (Whitelist) allows connections from 0.0.0.0/0." 
+      }, { status: 500 });
     }
+
+    await KeyValueStoreModel.findOneAndUpdate(
+      { key },
+      { value },
+      { upsert: true, new: true }
+    );
 
     return NextResponse.json({ success: true, message: "Sync successful." });
   } catch (error: any) {
