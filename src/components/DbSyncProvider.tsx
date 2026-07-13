@@ -73,11 +73,23 @@ export default function DbSyncProvider({ children }: { children: React.ReactNode
 
   if (!loaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-pulse flex flex-col items-center gap-3">
-          <Logo className="w-16 h-16 animate-pulse-soft" />
-          <span className="text-xs font-semibold text-brand-gray">Syncing database from cloud...</span>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FCF8F8] transition-all duration-700 ease-out">
+        <div className="relative w-36 h-36 flex items-center justify-center">
+          <svg className="w-full h-full text-brand-pink drop-shadow-lg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Detective Hat (Spy cap) */}
+            <path d="M20 50C20 30 35 25 50 25C65 25 80 30 80 50H20Z" fill="#2D221E" />
+            <ellipse cx="50" cy="50" rx="36" ry="6" fill="#2D221E" />
+            <rect x="35" y="42" width="30" height="5" fill="#FF6FAE" />
+            {/* Magnifying Glass */}
+            <g className="animate-bounce">
+              <circle cx="60" cy="60" r="14" stroke="#C8A2FF" strokeWidth="4.5" fill="white" fillOpacity="0.25" />
+              <path d="M70 70L84 84" stroke="#C8A2FF" strokeWidth="5.5" strokeLinecap="round" />
+            </g>
+          </svg>
+          <div className="absolute inset-0 rounded-full border-4 border-t-brand-pink border-transparent animate-spin"></div>
         </div>
+        <h3 className="font-display font-bold text-sm tracking-wider text-brand-charcoal mt-6">Lovespy Gifting Detective</h3>
+        <p className="text-[10px] text-brand-gray mt-1 animate-pulse">Cracking your custom surprise templates... 🔎</p>
       </div>
     );
   }
