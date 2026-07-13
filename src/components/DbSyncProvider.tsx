@@ -58,7 +58,7 @@ export default function DbSyncProvider({ children }: { children: React.ReactNode
             The application failed to retrieve the live catalog from the database. Stale local fallbacks have been disabled for security.
           </p>
           <div className="text-[10px] text-red-500 bg-red-50 p-4 rounded-xl border border-red-100 font-mono break-all text-left">
-            Error: {dbError}
+             Error: {dbError}
           </div>
           <button 
             onClick={() => window.location.reload()} 
