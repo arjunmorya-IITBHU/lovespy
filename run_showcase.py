@@ -5,7 +5,7 @@ import threading
 import os
 import sys
 
-PORT = 8000
+PORT = 8080
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
