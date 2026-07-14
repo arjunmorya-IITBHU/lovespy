@@ -20,6 +20,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full glass-card border-b border-brand-pink/10 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        new navbar 
         
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-3.5 group">
